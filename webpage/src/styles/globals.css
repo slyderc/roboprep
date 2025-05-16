@@ -1,0 +1,220 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Font sizes */
+  --prompt-title-size: 1rem;
+  --prompt-desc-size: 0.875rem;
+  --prompt-tag-size: 0.75rem;
+  --category-name-size: 0.875rem; /* Decreased from 1rem to 0.875rem */
+  --category-count-size: 0.75rem;
+  
+  /* Light theme (default) colors from vibe.css */
+  --background-color: #f9fafb;
+  --surface-color: #ffffff;
+  --text-color: #1f2937;
+  --text-muted: #6b7280;
+  --border-color: #e5e7eb;
+  --primary-blue: #2563eb;
+}
+
+/* Dark theme colors from vibe.css */
+.dark-theme {
+  --background-color: #1a1a1a;
+  --surface-color: #2a2a2a;
+  --text-color: #f3f4f6;
+  --text-muted: #9ca3af;
+  --border-color: #4b5563;
+  --primary-blue: #3b82f6;
+}
+
+.font-size-small {
+  --prompt-title-size: 0.875rem;
+  --prompt-desc-size: 0.75rem;
+  --prompt-tag-size: 0.7rem;
+  --category-name-size: 0.75rem; /* Decreased from 0.875rem to 0.75rem */
+  --category-count-size: 0.7rem;
+}
+
+.font-size-medium {
+  --prompt-title-size: 1rem;
+  --prompt-desc-size: 0.875rem;
+  --prompt-tag-size: 0.75rem;
+  --category-name-size: 0.875rem; /* Decreased from 1rem to 0.875rem */
+  --category-count-size: 0.75rem;
+}
+
+.font-size-large {
+  --prompt-title-size: 1.125rem;
+  --prompt-desc-size: 1rem;
+  --prompt-tag-size: 0.875rem;
+  --category-name-size: 1rem; /* Decreased from 1.125rem to 1rem */
+  --category-count-size: 0.875rem;
+}
+
+/* Base theme styles */
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Apply theme variables to common elements */
+.bg-white {
+  background-color: var(--surface-color) !important;
+}
+
+.bg-gray-50 {
+  background-color: var(--background-color) !important;
+}
+
+.text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+.text-gray-600 {
+  color: var(--text-muted) !important;
+}
+
+.text-gray-800 {
+  color: var(--text-color) !important;
+}
+
+/* Fix for count indicator in dark mode */
+.dark-theme .count-indicator {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* General style improvement for count indicator */
+.count-indicator {
+  min-width: 1.5rem;
+  text-align: center;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Special styling for category names to prevent truncation */
+.text-category-name {
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  display: block;
+  max-width: calc(100% - 1.75rem); /* Reserve space for the count indicator */
+}
+
+.border-gray-100, 
+.border-gray-200, 
+.border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+.shadow,
+.shadow-md,
+.shadow-lg {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Apply theme to form elements */
+input, 
+select, 
+textarea {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+/* Apply theme to buttons and active states */
+button.bg-blue-100,
+div.bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Active category in dark mode */
+.dark-theme div.bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Active category text in dark mode */
+.dark-theme .text-blue-700 {
+  color: #60a5fa !important; /* Lighter blue for better visibility */
+}
+
+/* Inactive category styling in dark mode */
+.dark-theme .text-gray-700 {
+  color: var(--text-color) !important;
+}
+
+/* Category title heading */
+.dark-theme .category-heading {
+  color: #a1a1aa !important; /* Brighter color for CATEGORIES heading */
+  font-weight: 600 !important;
+}
+
+/* Hover state for categories in dark mode */
+.dark-theme .hover\:bg-gray-100:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Variable Modal Styles */
+#variableModal {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 transition-opacity duration-300;
+  visibility: hidden;
+}
+
+#variableModal.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+#variableModal .header {
+  @apply p-3 border-b border-gray-200 flex justify-between items-center;
+}
+
+#variableModal .content {
+  @apply p-4 max-h-[70vh] overflow-y-auto;
+}
+
+#variableModal .footer {
+  @apply p-3 border-t border-gray-200 flex justify-end gap-2;
+}
+
+/* New Prompt Modal Styles */
+#newPromptModal {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 transition-opacity duration-300;
+  visibility: hidden;
+}
+
+#newPromptModal.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+#newPromptModal .header {
+  @apply p-3 border-b border-gray-200 flex justify-between items-center;
+}
+
+#newPromptModal .content {
+  @apply p-4 max-h-[70vh] overflow-y-auto;
+}
+
+#newPromptModal .footer {
+  @apply p-3 border-t border-gray-200 flex justify-end gap-2;
+}
+
+/* Toast Styles */
+.toast-base {
+  @apply fixed bottom-4 right-4 px-4 py-2 rounded-md shadow-lg text-white text-sm transition-opacity duration-300 ease-in-out z-[9999];
+}
+
+/* Clickable Prompt Styles */
+.clickable-prompt {
+  @apply cursor-pointer;
+}
+
+/* Apply max width for better readability */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1200px;
+  }
+}

@@ -1,0 +1,31 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "assets/icons/icon128.png",
+         "16": "assets/icons/icon16.png",
+         "48": "assets/icons/icon48.png"
+      },
+      "default_popup": "popup/popup.html"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' https://cdn.jsdelivr.net"
+   },
+   "description": "AI prompt tool for Radio DJs to quickly create radio-ready show prep.",
+   "icons": {
+      "128": "assets/icons/icon128.png",
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtI4wM/eDjU1ixFDmIonidteLeCHxc7pWyWFjCOEMsph81glp+IRKIolfaXB3w/kksvYxoazmpJxXJm81mVc5yRmi4xX83gcJ3EJGklXH+1yp10tqPUW9lwxwVM8Xav/j5BxZoozVAIpVeOlt6XRo8NaFb57c5LrgJKaTpbif2B+Pg31VsGafHV0pzrcN1KYoT4tfNkOcmFjbU1t9TV6YL8MG00i3uoxsWAOsTFIfH8YfAUcPaN9YfoXfkKrgm/7ni0gjT4MlZYdjyhX+BR7V8svG7oe4lwoWqYupy9swSiNtZkkflm+wyetQB7whmWKRDTMSUp2MrB0lPSxmMR79lQIDAQAB",
+   "manifest_version": 3,
+   "name": "Robo Show Prep from RadioDJ Dude",
+   "permissions": [ "storage", "sidePanel", "clipboardWrite" ],
+   "side_panel": {
+      "default_path": "sidebar/sidebar.html"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.1"
+}
