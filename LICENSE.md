@@ -1,6 +1,6 @@
 MIT License with Attribution
 
-Copyright (c) 2025 Now Wave Radio
+Copyright (c) 2025 Now Wave Radio, LLC
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
