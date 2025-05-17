@@ -9,15 +9,34 @@ export function Header() {
   const [isNewPromptModalOpen, setIsNewPromptModalOpen] = useState(false);
   
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
-        <div className="flex items-center">
-          <img 
-            src="/assets/logo/logo-roboShowprep-popup.png" 
-            alt="Robo Show Prep" 
-            className="h-8"
-          />
-          {/* Removed redundant text */}
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            <img 
+              src="/assets/logo/logo-roboShowprep-popup.png" 
+              alt="Robo Show Prep" 
+              className="h-8"
+            />
+          </div>
+          <div className="flex flex-col mt-0.5 leading-tight">
+            <a 
+              href="https://nowwave.radio" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[10px] hover:underline text-gray-600 dark:text-gray-400"
+            >
+              Created by Now Wave Radio
+            </a>
+            <a 
+              href="https://chromewebstore.google.com/detail/robo-show-prep-from-radio/fphfdmejmkckehhfdloonohbmodbefil" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[10px] hover:underline text-gray-600 dark:text-gray-400"
+            >
+              Based on the RoboShowPrep Chrome extension by RadioDJ Dude
+            </a>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
