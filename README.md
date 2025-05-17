@@ -68,29 +68,17 @@ Import prompt packs with duplicate detection:
 
 ## Technical Details
 
-### Repository Structure
-
-This repository contains both:
-- **Chrome Extension**: Original version in the root directory
-- **Web Application**: Next.js version in the `/webpage` directory
-
 ### Technology Stack
 
-#### Web Application
 - **Frontend Framework**: React with Next.js 14
 - **Styling**: Tailwind CSS 3.4
 - **State Management**: React Context API
 - **Data Persistence**: localStorage (client-side)
 - **AI Integration**: OpenAI API with Next.js API routes
 
-#### Chrome Extension
-- **Frontend**: Vanilla JavaScript, HTML, CSS
-- **Storage**: Chrome Extension Storage API
-- **Background Service**: Service workers for initialization
-
 ### Project Architecture
 
-#### Web Application Structure
+#### Application Structure
 ```
 /webpage/
 ├── public/
@@ -126,30 +114,7 @@ This repository contains both:
 │       └── globals.css         # Global styles with theme variables
 ```
 
-#### Chrome Extension Structure
-```
-/
-├── manifest.json             # Extension configuration
-├── background.js             # Background service worker
-├── popup/
-│   ├── popup.html            # Quick access interface
-│   ├── popup.js              # Popup controller
-│   └── popup.css             # Popup styles
-├── sidebar/
-│   ├── sidebar.html          # Sidebar panel interface
-│   ├── sidebar.js            # Sidebar controller 
-│   └── sidebar.css           # Sidebar styles
-├── components/               # Shared UI components
-├── content/
-│   └── prompts.json          # Default prompts
-└── assets/
-    ├── icons/                # Extension icons
-    └── styles/               # Shared styles
-```
-
 ### Data Management
-
-Both versions use a similar data structure:
 
 #### Storage Keys
 - `userPrompts`: Array of user-created prompts
@@ -158,10 +123,10 @@ Both versions use a similar data structure:
 - `recentlyUsed`: Array of IDs for recently used prompts
 - `userCategories`: Array of user-created categories
 - `settings`: Object containing user preferences (theme, font size, etc.)
-- `aiResponses`: Array of AI-generated responses (web app only)
+- `aiResponses`: Array of AI-generated responses
 
-#### Web App Storage Implementation
-The web application uses a wrapper around the browser's localStorage API to mimic the Chrome extension's storage API for compatibility:
+#### Storage Implementation
+The web application uses a wrapper around the browser's localStorage API to mimic a Chrome extension's storage API for compatibility:
 
 ```javascript
 // src/lib/storage.js
@@ -322,8 +287,3 @@ AI responses are stored with the following structure:
 5. Open your browser to `http://localhost:3000`
 6. For production build, use `npm run build`
 
-### Chrome Extension
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked" and select the project root directory
-4. The extension will appear in your extensions list
