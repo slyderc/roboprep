@@ -139,11 +139,27 @@ export function HomePage() {
         isOpen={responseHistoryModalOpen}
         onClose={() => {
           setResponseHistoryModalOpen(false);
-          // Return to the list view after closing individual response
-          setResponseListModalOpen(true);
+          
+          // Refresh the responses list to ensure deleted items are removed
+          if (currentPrompt?.id) {
+            const updatedResponses = getResponsesForPrompt(currentPrompt.id);
+            setResponsesList(updatedResponses);
+            
+            // Only return to the list view if there are still responses left
+            if (updatedResponses.length > 0) {
+              setResponseListModalOpen(true);
+            }
+          }
         }}
         promptId={currentPrompt?.id}
         initialIndex={currentResponseIndex}
+        onResponseDeleted={(deletedResponseId) => {
+          // Refresh the responses list when a response is deleted
+          if (currentPrompt?.id) {
+            const updatedResponses = getResponsesForPrompt(currentPrompt.id);
+            setResponsesList(updatedResponses);
+          }
+        }}
       />
     </div>
   );

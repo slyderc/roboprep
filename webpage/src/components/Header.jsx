@@ -26,7 +26,7 @@ export function Header() {
               rel="noopener noreferrer"
               className="text-[10px] hover:underline text-gray-600 dark:text-gray-400"
             >
-              Created by Now Wave Radio
+              Created by Now Wave Radio and Anthropic's Claude Code
             </a>
             <a 
               href="https://chromewebstore.google.com/detail/robo-show-prep-from-radio/fphfdmejmkckehhfdloonohbmodbefil" 
@@ -34,7 +34,7 @@ export function Header() {
               rel="noopener noreferrer"
               className="text-[10px] hover:underline text-gray-600 dark:text-gray-400"
             >
-              Based on the RoboShowPrep Chrome extension by RadioDJ Dude
+              Based on the Robo Show Prep Chrome extension by RadioDJ Dude
             </a>
           </div>
         </div>

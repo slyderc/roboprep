@@ -33,6 +33,12 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
     return text.substring(0, maxLength) + '...';
   };
   
+  // If there are no responses at all, don't show the modal
+  if (isOpen && responses.length === 0) {
+    setTimeout(() => onClose(), 0);
+    return null;
+  }
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`${responses.length} ${responses.length === 1 ? 'response' : 'responses'} saved`} maxWidth="2xl">
       {responses.length === 0 ? (

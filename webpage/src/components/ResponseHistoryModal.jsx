@@ -11,7 +11,7 @@ import { usePrompts } from '../context/PromptContext';
  * @param {string} props.promptId - The ID of the prompt whose responses to show
  * @returns {JSX.Element} The ResponseHistoryModal component
  */
-export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex = 0 }) {
+export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex = 0, onResponseDeleted }) {
   const { getResponsesForPrompt, deleteResponse, updateResponse } = usePrompts();
   const [responses, setResponses] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -170,6 +170,12 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
       // Reset editing state but keep showing the updated text
       setHasEdits(false);
       setIsEditing(false);
+      
+      // Notify parent component that a response was updated
+      // Use the same callback as deletion to refresh the list
+      if (onResponseDeleted && typeof onResponseDeleted === 'function') {
+        onResponseDeleted(currentResponse.id, 'edit');
+      }
     } catch (err) {
       console.error('Error updating response:', err);
       alert('Failed to save your edits. Please try again.');
@@ -209,6 +215,9 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
       // Update the responses list
       const updatedResponses = responses.filter(r => r.id !== currentResponse.id);
       
+      // Save deleted response ID to notify parent
+      const deletedResponseId = currentResponse.id;
+      
       if (updatedResponses.length === 0) {
         // If no responses left, set noResponses flag
         setNoResponses(true);
@@ -216,6 +225,11 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
         setResponses([]);
         setCurrentIndex(0);
         setEditedText('');
+        
+        // Auto-close the modal if there are no more responses
+        if (onClose) {
+          setTimeout(() => onClose(), 300);
+        }
       } else {
         // Update the responses and adjust the index if needed
         setResponses(updatedResponses);
@@ -225,6 +239,11 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
       }
       
       setConfirmDelete(false);
+      
+      // Notify parent component that a response was deleted
+      if (onResponseDeleted && typeof onResponseDeleted === 'function') {
+        onResponseDeleted(deletedResponseId);
+      }
     } catch (err) {
       console.error('Error deleting response:', err);
       setConfirmDelete(false);

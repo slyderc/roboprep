@@ -1,15 +1,15 @@
 # Robo Show Prep
 
-A tool that helps radio DJs quickly create radio-ready show prep content using AI prompts, available as both a Chrome extension and a web application.
+A tool that helps radio DJs quickly create radio-ready show prep content using AI prompts.
 
-## Project Overview
+## License
 
-This repository contains two versions of the Robo Show Prep tool:
+This project is licensed under the MIT License with Attribution - see the [LICENSE.md](LICENSE.md) file for details.
 
-1. **Chrome Extension** (in the root directory) - Built with Chrome Extension Manifest V3
-2. **Web Application** (in the `/webpage` directory) - Built with Next.js and React
-
-Both versions share the same core functionality and data structures, allowing users to manage and utilize AI prompts for radio show preparation.
+When using this code, you must:
+- Include the original copyright notice
+- Provide attribution to Now Wave Radio (https://nowwave.radio)
+- Reference the original codebase repository (https://github.com/slyderc/roboprep)
 
 ## Features
 
@@ -68,24 +68,90 @@ Import prompt packs with duplicate detection:
 
 ## Technical Details
 
-### Chrome Extension
-- Built with Chrome Extension Manifest V3
-- Provides both popup and sidebar interfaces
-- Implements clipboard integration for prompt copying
-- Uses Chrome's local storage for data persistence
+### Repository Structure
 
-### Web Application
-- Built with React and Next.js
-- Responsive design for all device sizes
-- Uses localStorage for data persistence
-- Compatible with modern browsers
-- Mimics the Chrome extension's storage API for data consistency
-- Integrates with OpenAI API for AI-generated content
-- Supports API error handling with retry logic
+This repository contains both:
+- **Chrome Extension**: Original version in the root directory
+- **Web Application**: Next.js version in the `/webpage` directory
 
-## Storage
+### Technology Stack
 
-Both versions store the following data structures:
+#### Web Application
+- **Frontend Framework**: React with Next.js 14
+- **Styling**: Tailwind CSS 3.4
+- **State Management**: React Context API
+- **Data Persistence**: localStorage (client-side)
+- **AI Integration**: OpenAI API with Next.js API routes
+
+#### Chrome Extension
+- **Frontend**: Vanilla JavaScript, HTML, CSS
+- **Storage**: Chrome Extension Storage API
+- **Background Service**: Service workers for initialization
+
+### Project Architecture
+
+#### Web Application Structure
+```
+/webpage/
+├── public/
+│   ├── assets/
+│   │   ├── icons/
+│   │   └── logo/
+├── src/
+│   ├── app/
+│   │   ├── page.jsx            # Main entry point
+│   │   ├── layout.jsx          # Main layout component
+│   │   └── api/
+│   │       └── openai/         # API routes for OpenAI
+│   ├── components/
+│   │   ├── ui/                 # Base UI components
+│   │   ├── CategoryList.jsx    # Category navigation
+│   │   ├── PromptCard.jsx      # Individual prompt card
+│   │   ├── NewPromptModal.jsx  # Create/edit prompt modal
+│   │   ├── VariableModal.jsx   # Variable replacement modal
+│   │   ├── ResponseModal.jsx   # Display OpenAI responses
+│   │   ├── ResponseHistoryModal.jsx # View saved responses
+│   │   └── ...
+│   ├── context/
+│   │   ├── PromptContext.jsx   # Core data management
+│   │   └── SettingsContext.jsx # User preferences
+│   ├── lib/
+│   │   ├── storage.js          # LocalStorage wrapper
+│   │   ├── importExportUtil.js # Import/export functionality
+│   │   ├── apiClient.js        # Client-side API wrapper
+│   │   └── ...
+│   ├── data/
+│   │   └── prompts.json        # Default prompts
+│   └── styles/
+│       └── globals.css         # Global styles with theme variables
+```
+
+#### Chrome Extension Structure
+```
+/
+├── manifest.json             # Extension configuration
+├── background.js             # Background service worker
+├── popup/
+│   ├── popup.html            # Quick access interface
+│   ├── popup.js              # Popup controller
+│   └── popup.css             # Popup styles
+├── sidebar/
+│   ├── sidebar.html          # Sidebar panel interface
+│   ├── sidebar.js            # Sidebar controller 
+│   └── sidebar.css           # Sidebar styles
+├── components/               # Shared UI components
+├── content/
+│   └── prompts.json          # Default prompts
+└── assets/
+    ├── icons/                # Extension icons
+    └── styles/               # Shared styles
+```
+
+### Data Management
+
+Both versions use a similar data structure:
+
+#### Storage Keys
 - `userPrompts`: Array of user-created prompts
 - `corePrompts`: Array of built-in prompts
 - `favorites`: Array of IDs for favorited prompts
@@ -93,6 +159,114 @@ Both versions store the following data structures:
 - `userCategories`: Array of user-created categories
 - `settings`: Object containing user preferences (theme, font size, etc.)
 - `aiResponses`: Array of AI-generated responses (web app only)
+
+#### Web App Storage Implementation
+The web application uses a wrapper around the browser's localStorage API to mimic the Chrome extension's storage API for compatibility:
+
+```javascript
+// src/lib/storage.js
+const storage = {
+  get: async (keys) => {
+    const result = {};
+    // Implementation mimics Chrome's storage.local.get
+    return result;
+  },
+  set: async (items) => {
+    // Implementation mimics Chrome's storage.local.set
+  },
+  // Response-specific methods
+  getResponses: async () => {
+    const result = await storage.get({ 'aiResponses': [] });
+    return result.aiResponses;
+  },
+  saveResponse: async (response) => {
+    const responses = await storage.getResponses();
+    // Save the response and return it
+  },
+};
+```
+
+### OpenAI Integration
+
+The web application provides integration with OpenAI's GPT-4o model through a secure API:
+
+#### API Configuration
+Environment variables control the OpenAI integration:
+```
+NEXT_PUBLIC_OPENAI_API_KEY=your_api_key_here
+NEXT_PUBLIC_OPENAI_MODEL=gpt-4o
+NEXT_PUBLIC_OPENAI_MAX_TOKENS=2048
+NEXT_PUBLIC_OPENAI_TEMPERATURE=0.7
+```
+
+#### API Client
+```javascript
+// Client-side API wrapper for sending prompts to OpenAI
+export async function sendPromptToOpenAI(promptText, variables = {}) {
+  try {
+    const response = await fetch('/api/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText, variables })
+    });
+    
+    if (!response.ok) {
+      throw new Error('OpenAI API request failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending prompt to OpenAI:', error);
+    throw error;
+  }
+}
+```
+
+#### API Route
+```javascript
+// API route handler for OpenAI requests
+export async function POST(request) {
+  try {
+    const { prompt, variables } = await request.json();
+    
+    const response = await openai.chat.completions.create({
+      model: process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are an AI assistant helping radio DJs create show content.' },
+        { role: 'user', content: processVariables(prompt, variables) }
+      ],
+      temperature: parseFloat(process.env.NEXT_PUBLIC_OPENAI_TEMPERATURE || 0.7),
+      max_tokens: parseInt(process.env.NEXT_PUBLIC_OPENAI_MAX_TOKENS || 2048),
+    });
+    
+    // Process and return response...
+  } catch (error) {
+    // Error handling...
+  }
+}
+```
+
+### Theme System
+
+The web application implements a theme system using CSS variables and React context:
+
+```css
+/* Light theme (default) */
+:root {
+  --background-color: #f9fafb;
+  --surface-color: #ffffff;
+  --text-color: #1f2937;
+  /* ... */
+}
+
+/* Dark theme */
+.dark-theme {
+  --background-color: #1a1a1a;
+  --surface-color: #2a2a2a;
+  --text-color: #f3f4f6;
+  /* ... */
+}
+```
 
 ## Prompt Structure
 
@@ -113,7 +287,7 @@ Each prompt is stored with the following structure:
 }
 ```
 
-## AI Response Structure (Web App)
+## AI Response Structure
 
 AI responses are stored with the following structure:
 ```javascript
@@ -132,17 +306,24 @@ AI responses are stored with the following structure:
 }
 ```
 
-## Running the Projects
+## Development Prerequisites
 
-### Chrome Extension
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable Developer Mode
-3. Click "Load unpacked" and select the root directory of this project
-4. The extension will appear in your extensions list
+- Node.js 18.x or later
+- npm or yarn
+- OpenAI API key (for AI features in web app)
+
+## Running the Projects
 
 ### Web Application
 1. Navigate to the `/webpage` directory
 2. Install dependencies with `npm install`
-3. Run the development server with `npm run dev`
-4. Open your browser to `http://localhost:3000`
-5. For production build, use `npm run build`
+3. Create a `.env.local` file with your OpenAI API key and settings
+4. Run the development server with `npm run dev`
+5. Open your browser to `http://localhost:3000`
+6. For production build, use `npm run build`
+
+### Chrome Extension
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select the project root directory
+4. The extension will appear in your extensions list

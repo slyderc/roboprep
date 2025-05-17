@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository now contains both a Chrome extension and a web application version of "Robo Show Prep from RadioDJ Dude". The tool helps radio DJs quickly generate AI-powered show preparation content through a library of customizable prompts that DJs can use to create radio-ready content like artist bios, music facts, weather reports, and various show segments.
+This repository contains both a Chrome extension and a web application version of "Robo Show Prep from RadioDJ Dude". The tool helps radio DJs quickly generate AI-powered show preparation content through a library of customizable prompts that DJs can use to create radio-ready content like artist bios, music facts, weather reports, and various show segments. The web application now features direct OpenAI integration for generating content without leaving the app.
 
 ## Repository Structure
 
 The repository is organized into two main sections:
 - Root directory: Contains the original Chrome extension (manifest v3)
-- `/webpage/` directory: Contains the newer Next.js web application version
+- `/webpage/` directory: Contains the newer Next.js web application version with OpenAI API integration
 
 ## Chrome Extension Architecture
 
@@ -53,19 +53,31 @@ The repository is organized into two main sections:
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
 - **Data Persistence**: localStorage (client-side)
+- **AI Integration**: OpenAI API via Next.js API routes
 
 ### Key Components
 
 1. **User Interface**
    - Single-page responsive application with dark/light theme support
+   - Individual prompt cards with clean, modern styling
+   - Static categories sidebar that remains visible while scrolling
    - Adapted from the Chrome extension's UI patterns
+   - Attribution links to original creators
 
 2. **Data Management**
    - Uses localStorage with a wrapper that mimics Chrome's storage API
-   - Maintains the same data structures as the extension
-   - Support for import/export functionality
+   - Maintains the same data structures as the extension with additions for AI responses
+   - Support for import/export functionality including OpenAI responses
+   - Response history browsing with editing capabilities
 
-3. **Theme System**
+3. **OpenAI Integration**
+   - Direct submission of prompts to OpenAI's API
+   - Variable replacement before submitting to AI
+   - Response storage and management
+   - Response editing with version tracking
+   - Multiple-response viewing and history
+
+4. **Theme System**
    - Light mode (default) and dark mode support
    - Consistent color theming throughout the application
    - Theme preference saved in user settings
@@ -73,10 +85,59 @@ The repository is organized into two main sections:
 ### Core Files
 
 - `/webpage/src/app/`: Next.js app router pages and layout
+  - `/api/openai/`: API route for OpenAI integration
 - `/webpage/src/components/`: UI components
+  - `ResponseModal.jsx`: Displays OpenAI responses
+  - `ResponseHistoryModal.jsx`: Manages saved responses
+  - `ResponseListModal.jsx`: Lists all responses for a prompt
 - `/webpage/src/context/`: React Context providers
+  - `PromptContext.jsx`: Handles prompt and response management
 - `/webpage/src/lib/`: Utility functions and helpers
+  - `openaiService.js`: OpenAI API integration
+  - `apiClient.js`: Client-side API wrapper
+  - `storage.js`: Extended for AI responses
 - `/webpage/src/styles/`: Global CSS and theme definitions
+
+## OpenAI Integration
+
+### Environment Setup
+
+The web application requires OpenAI API credentials to be configured in a `.env.local` file:
+```
+NEXT_PUBLIC_OPENAI_API_KEY=your_api_key_here
+NEXT_PUBLIC_OPENAI_MODEL=gpt-4o
+NEXT_PUBLIC_OPENAI_MAX_TOKENS=2048
+NEXT_PUBLIC_OPENAI_TEMPERATURE=0.7
+```
+
+### Response Structure
+
+AI responses are stored with the following structure:
+```javascript
+{
+  "id": "response_1234567890",           // Unique identifier
+  "promptId": "associated_prompt_id",    // ID of the prompt that generated this response
+  "responseText": "The API response text", // The content returned by OpenAI
+  "modelUsed": "gpt-4o",                 // Model that generated the response
+  "promptTokens": 150,                   // Number of tokens in the prompt
+  "completionTokens": 250,               // Number of tokens in the response
+  "totalTokens": 400,                    // Total tokens used
+  "createdAt": "2023-05-15T14:30:00Z",   // ISO date string
+  "variablesUsed": {                     // Record of variables used in this prompt
+    "variable_name": "value"
+  },
+  "lastEdited": "2023-05-16T10:15:00Z"   // Timestamp of last edit (if edited)
+}
+```
+
+### AI Workflow
+
+1. User clicks "Submit to AI" on a prompt card
+2. If prompt has variables, the variable modal opens for customization
+3. The prompt (with replaced variables) is sent to OpenAI via the API route
+4. Response is displayed in a modal with options to save
+5. Saved responses can be viewed, edited, and managed via response history
+6. Responses can be exported along with prompts
 
 ## Development Guidelines
 
@@ -108,11 +169,13 @@ When modifying prompts:
 ### UI Components
 
 Both the extension and web app use similar components with shared patterns:
-- `PromptCard/promptCard.js`: Displays individual prompts
-- `VariableModal/variableModal.js`: Handles variable replacement
-- `CategoryList/categoryList.js`: Manages prompt categories
-- `NewPromptModal/newPromptModal.js`: UI for creating new prompts
-- `PromptDisplay/promptDisplay.js`: Controls how prompts are shown
+- `PromptCard.jsx`: Displays individual prompts with OpenAI integration
+- `VariableModal.jsx`: Handles variable replacement for copy and AI submission
+- `CategoryList.jsx`: Manages prompt categories in a static sidebar
+- `NewPromptModal.jsx`: UI for creating new prompts
+- `ResponseModal.jsx`: Displays and manages OpenAI responses
+- `ResponseHistoryModal.jsx`: Displays saved response history with editing
+- `ResponseListModal.jsx`: Lists all responses for a prompt with variables display
 
 ### Adding New Features
 
@@ -122,6 +185,7 @@ When adding new features:
 3. Use Tailwind CSS for styling
 4. Follow established patterns for state management
 5. Update this guide if necessary
+6. Ensure both light and dark themes are supported
 
 ### Common Tasks
 
@@ -131,9 +195,14 @@ When adding new features:
    - Dark mode colors use CSS variables defined in globals.css
 
 2. **Import/Export**:
-   - Export functionality saves user prompts to a JSON file
+   - Export functionality saves user prompts and AI responses to a JSON file
    - Import validates the JSON format and checks for duplicates
-   - Both are accessible from the Settings modal
+   - Both are accessible from the Settings modal with options for including responses
+
+3. **OpenAI Integration**:
+   - API key management through environment variables
+   - Response storage and editing
+   - Error handling and retry logic for rate limits
 
 ## Testing
 
@@ -147,5 +216,8 @@ When adding new features:
 1. Run the development server with `npm run dev`
 2. Test in both light and dark themes
 3. Verify responsive behavior at different screen sizes
-4. Test import/export functionality
+4. Test import/export functionality with and without responses
 5. Verify localStorage persistence
+6. Test OpenAI integration with variable replacement
+7. Test response history browsing and editing
+8. Verify proper error handling for API failures
