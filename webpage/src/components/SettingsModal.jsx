@@ -4,8 +4,8 @@ import { Button, IconButton } from './ui/Button';
 import { Input, Label, FormGroup } from './ui/Input';
 import { usePrompts } from '../context/PromptContext';
 import { useSettings } from '../context/SettingsContext';
-// Using debug version for troubleshooting
-import { exportPromptData, importPromptData } from '../lib/importExportUtil.debug';
+// Import the utility functions
+import { exportPromptData, importPromptData } from '../lib/importExportUtil';
 import { showToast } from '../lib/toastUtil';
 
 export function SettingsModal({ isOpen, onClose }) {
@@ -24,6 +24,7 @@ export function SettingsModal({ isOpen, onClose }) {
   const [editingCategory, setEditingCategory] = useState(null);
   const [error, setError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [includeResponses, setIncludeResponses] = useState(true);
 
   // Update fontSize state when settings change
   useEffect(() => {
@@ -79,7 +80,7 @@ export function SettingsModal({ isOpen, onClose }) {
     onClose();
   };
   
-  const handleImport = async () => {
+  const handleImport = async (includeResponses = true) => {
     // Prevent multiple clicks during import
     if (isImporting) return;
     
@@ -94,30 +95,33 @@ export function SettingsModal({ isOpen, onClose }) {
       setIsImporting(true);
       try {
         console.log('Starting import process for file:', file.name);
-        const result = await importPromptData(file);
+        const result = await importPromptData(file, {
+          skipDuplicates: true,
+          includeResponses: includeResponses
+        });
         console.log('Import result:', result);
         
         // Force a reload of the page to update the context
-        const needsReload = result.success && result.newPromptsCount > 0;
+        const needsReload = result.success && (result.newPromptsCount > 0 || result.responsesCount > 0);
         
         if (result.success) {
-          if (result.newPromptsCount === 0 && result.duplicateCount > 0) {
-            showToast(`No new prompts imported - all ${result.duplicateCount} prompts already exist`, 'warning');
-          } else if (result.duplicateCount > 0) {
-            showToast(`Imported ${result.newPromptsCount} prompts (${result.duplicateCount} duplicates skipped)`);
-            
-            // Close the modal after success
-            if (needsReload) {
-              setTimeout(() => {
-                onClose();
-                // Wait a moment then reload the page to ensure context is updated
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500);
-              }, 1500);
-            }
+          let message = '';
+          
+          if (result.newPromptsCount === 0 && result.responsesCount === 0) {
+            message = `No new data imported - all ${result.duplicateCount} prompts already exist`;
+            showToast(message, 'warning');
           } else {
-            showToast(`Successfully imported ${result.newPromptsCount} prompts`);
+            message = `Imported ${result.newPromptsCount} prompts`;
+            
+            if (includeResponses && result.responsesCount > 0) {
+              message += ` and ${result.responsesCount} responses`;
+            }
+            
+            if (result.duplicateCount > 0) {
+              message += ` (${result.duplicateCount} duplicates skipped)`;
+            }
+            
+            showToast(message);
             
             // Close the modal after success
             if (needsReload) {
@@ -144,10 +148,13 @@ export function SettingsModal({ isOpen, onClose }) {
     fileInput.click();
   };
   
-  const handleExport = async () => {
-    const success = await exportPromptData();
+  const handleExport = async (includeResponses = true) => {
+    const success = await exportPromptData(includeResponses);
     if (success) {
-      showToast('Prompts exported successfully');
+      const message = includeResponses
+        ? 'Prompts and responses exported successfully'
+        : 'Prompts exported successfully';
+      showToast(message);
     }
   };
   
@@ -405,16 +412,40 @@ export function SettingsModal({ isOpen, onClose }) {
           <p className="text-xs text-gray-600 mb-3">
             Export your prompts or import a pack.
           </p>
+          
+          {/* Response option */}
+          <div className="mb-4 flex items-center">
+            <input
+              id="includeResponses"
+              type="checkbox"
+              className="h-4 w-4 text-blue-600 rounded border-gray-300"
+              defaultChecked={true}
+              onChange={(e) => {
+                // Store the preference in a data attribute
+                e.target.closest('section').dataset.includeResponses = e.target.checked;
+              }}
+            />
+            <label htmlFor="includeResponses" className="ml-2 text-sm text-gray-600">
+              Include AI responses in export/import
+            </label>
+          </div>
+          
           <div className="flex gap-2">
             <Button
               variant="secondary"
-              onClick={handleExport}
+              onClick={(e) => {
+                const includeResponses = e.target.closest('section').dataset.includeResponses !== 'false';
+                handleExport(includeResponses);
+              }}
             >
               Export
             </Button>
             <Button
               variant="secondary"
-              onClick={handleImport}
+              onClick={(e) => {
+                const includeResponses = e.target.closest('section').dataset.includeResponses !== 'false';
+                handleImport(includeResponses);
+              }}
               disabled={isImporting}
             >
               {isImporting ? 'Importing...' : 'Import'}

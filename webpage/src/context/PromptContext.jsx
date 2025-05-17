@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import storage from '../lib/storage';
 import defaultPrompts from '../data/prompts.json';
+import { sendPromptToOpenAI } from '../lib/apiClient';
 
 // Define core categories
 const CORE_CATEGORIES = [
@@ -31,6 +32,8 @@ export function PromptProvider({ children }) {
   const [initialized, setInitialized] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [categories, setCategories] = useState([]);
+  // New state for AI responses
+  const [responses, setResponses] = useState([]);
   
   // Initialize storage
   useEffect(() => {
@@ -41,7 +44,8 @@ export function PromptProvider({ children }) {
         'favorites': [],
         'recentlyUsed': [],
         'userCategories': [],
-        'settings': { fontSize: 'medium' }
+        'settings': { fontSize: 'medium' },
+        'aiResponses': [] // Add this line
       });
       
       setUserPrompts(data.userPrompts);
@@ -50,6 +54,7 @@ export function PromptProvider({ children }) {
       setRecentlyUsed(data.recentlyUsed);
       setUserCategories(data.userCategories);
       setSettings(data.settings);
+      setResponses(data.aiResponses); // Add this line
       setInitialized(true);
     }
     
@@ -140,15 +145,20 @@ export function PromptProvider({ children }) {
     const updatedFavorites = favorites.filter(id => id !== promptId);
     const updatedRecentlyUsed = recentlyUsed.filter(id => id !== promptId);
     
+    // Remove associated responses
+    const updatedResponses = responses.filter(r => r.promptId !== promptId);
+    
     if (updatedUserPrompts.length < initialLength) {
       setUserPrompts(updatedUserPrompts);
       setFavorites(updatedFavorites);
       setRecentlyUsed(updatedRecentlyUsed);
+      setResponses(updatedResponses);
       
       await storage.set({ 
         userPrompts: updatedUserPrompts,
         favorites: updatedFavorites,
-        recentlyUsed: updatedRecentlyUsed
+        recentlyUsed: updatedRecentlyUsed,
+        aiResponses: updatedResponses
       });
       
       return true;
@@ -311,6 +321,92 @@ export function PromptProvider({ children }) {
     }
   }, [initialized, settings.fontSize]);
   
+  // AI response functions
+  async function saveResponse(response) {
+    // Make sure the response has a promptId
+    if (!response.promptId) {
+      throw new Error('Response must have a promptId');
+    }
+    
+    const newResponse = {
+      ...response,
+      id: `response_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString()
+    };
+    
+    const updatedResponses = [...responses, newResponse];
+    setResponses(updatedResponses);
+    await storage.set({ 'aiResponses': updatedResponses });
+    return newResponse;
+  }
+  
+  async function deleteResponse(responseId) {
+    const updatedResponses = responses.filter(r => r.id !== responseId);
+    
+    if (updatedResponses.length < responses.length) {
+      setResponses(updatedResponses);
+      await storage.set({ 'aiResponses': updatedResponses });
+      return true;
+    }
+    return false;
+  }
+  
+  async function updateResponse(updatedResponse) {
+    // Make sure we have an ID
+    if (!updatedResponse.id) {
+      throw new Error('Response must have an ID to update');
+    }
+    
+    // Find the index of the response to update
+    const responseIndex = responses.findIndex(r => r.id === updatedResponse.id);
+    
+    if (responseIndex === -1) {
+      throw new Error('Response not found');
+    }
+    
+    // Create updated array with the modified response
+    const updatedResponses = [...responses];
+    updatedResponses[responseIndex] = {
+      ...updatedResponse,
+      lastEdited: new Date().toISOString() 
+    };
+    
+    // Update state and storage
+    setResponses(updatedResponses);
+    await storage.set({ 'aiResponses': updatedResponses });
+    
+    return updatedResponse;
+  }
+  
+  function getResponsesForPrompt(promptId) {
+    return responses.filter(r => r.promptId === promptId);
+  }
+  
+  function countResponsesForPrompt(promptId) {
+    return getResponsesForPrompt(promptId).length;
+  }
+  
+  async function submitPromptToAi(prompt, variables = {}) {
+    try {
+      // If prompt is an object, use its text and ID
+      const promptText = typeof prompt === 'object' ? prompt.promptText : prompt;
+      const promptId = typeof prompt === 'object' ? prompt.id : null;
+      
+      const result = await sendPromptToOpenAI(promptText, variables);
+      
+      // Add promptId to the response if available
+      if (promptId) {
+        result.promptId = promptId;
+        result.variablesUsed = variables;
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error submitting prompt to AI:', error);
+      throw error;
+    }
+  }
+  
   // Return all context values
   const value = {
     // Data
@@ -343,6 +439,15 @@ export function PromptProvider({ children }) {
     
     // Settings functions
     updateSettings,
+    
+    // AI response functions
+    responses,
+    saveResponse,
+    deleteResponse,
+    updateResponse,
+    getResponsesForPrompt,
+    countResponsesForPrompt,
+    submitPromptToAi,
     
     // Helper function
     allPrompts: [...corePrompts, ...userPrompts]

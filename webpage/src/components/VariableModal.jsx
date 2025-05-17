@@ -5,7 +5,7 @@ import { Input, Label, Select, FormGroup } from './ui/Input';
 import { detectVariables, replaceVariables, getPlaceholderExample } from '../lib/formatPromptDisplay';
 import { usePrompts } from '../context/PromptContext';
 
-export function VariableModal({ isOpen, onClose, prompt, onCopyComplete }) {
+export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmitToAi }) {
   const [replacements, setReplacements] = useState({});
   const [showPreview, setShowPreview] = useState(false);
   const { addToRecentlyUsed } = usePrompts();
@@ -104,11 +104,23 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete }) {
     }
   };
   
+  // New handler for AI submission
+  const handleSubmitToAi = () => {
+    // Mark as recently used
+    addToRecentlyUsed(prompt.id);
+    
+    // Call the parent handler with the prompt and variables
+    if (onSubmitToAi) {
+      onSubmitToAi(prompt, replacements);
+      onClose();
+    }
+  };
+  
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Customize & Copy"
+      title="Customize Prompt"
       footer={
         <>
           <Button 
@@ -123,28 +135,52 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete }) {
           >
             Preview
           </Button>
-          <Button 
-            variant="primary"
-            onClick={handleCopy}
-            icon={
-              <svg 
-                className="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24" 
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth="2" 
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-            }
-          >
-            Copy Prompt
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="primary"
+              onClick={handleCopy}
+              icon={
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              }
+            >
+              Copy
+            </Button>
+            <Button 
+              onClick={handleSubmitToAi}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              icon={
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" 
+                  />
+                </svg>
+              }
+            >
+              Submit to AI
+            </Button>
+          </div>
         </>
       }
     >

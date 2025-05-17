@@ -38,6 +38,51 @@ const storage = {
   
   clear: async () => {
     localStorage.clear();
+  },
+  
+  // Helper functions for AI responses
+  getResponses: async () => {
+    const result = await storage.get({ 'aiResponses': [] });
+    return result.aiResponses;
+  },
+  
+  getResponsesForPrompt: async (promptId) => {
+    const responses = await storage.getResponses();
+    return responses.filter(r => r.promptId === promptId);
+  },
+  
+  saveResponse: async (response) => {
+    const responses = await storage.getResponses();
+    
+    // Generate a unique ID if not provided
+    if (!response.id) {
+      response.id = `response_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    }
+    
+    // Ensure creation timestamp
+    if (!response.createdAt) {
+      response.createdAt = new Date().toISOString();
+    }
+    
+    const updatedResponses = [...responses, response];
+    await storage.set({ 'aiResponses': updatedResponses });
+    return response;
+  },
+  
+  deleteResponse: async (responseId) => {
+    const responses = await storage.getResponses();
+    const updatedResponses = responses.filter(r => r.id !== responseId);
+    
+    if (updatedResponses.length < responses.length) {
+      await storage.set({ 'aiResponses': updatedResponses });
+      return true;
+    }
+    return false;
+  },
+  
+  countResponsesForPrompt: async (promptId) => {
+    const responses = await storage.getResponses();
+    return responses.filter(r => r.promptId === promptId).length;
   }
 };
 

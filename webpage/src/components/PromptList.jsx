@@ -5,20 +5,22 @@ import { VariableModal } from './VariableModal';
 import { NewPromptModal } from './NewPromptModal';
 import { Button } from './ui/Button';
 
-export function PromptList() {
+export function PromptList({ onSubmitToAi, onViewResponses }) {
   const { 
     userPrompts,
     corePrompts,
     favorites,
     recentlyUsed,
     activeCategory,
-    categories
+    categories,
+    submitPromptToAi
   } = usePrompts();
   
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [promptToEdit, setPromptToEdit] = useState(null);
+  const [submitToAiMode, setSubmitToAiMode] = useState(false);
   
   // Get current category name
   const activeCategoryName = useMemo(() => {
@@ -87,6 +89,7 @@ export function PromptList() {
   const handleCopyPrompt = (prompt, onCopySuccess) => {
     setSelectedPrompt(prompt);
     setIsVariableModalOpen(true);
+    setSubmitToAiMode(false);
     
     // Store the callback so we can trigger it after copy completes
     if (onCopySuccess) {
@@ -102,9 +105,38 @@ export function PromptList() {
     setIsEditModalOpen(true);
   };
   
+  // New handlers for AI functionality
+  const handleSubmitToAi = (prompt) => {
+    const hasVariables = prompt.promptText && prompt.promptText.includes('{{');
+    
+    if (hasVariables) {
+      // Open variable modal in AI mode
+      setSelectedPrompt(prompt);
+      setIsVariableModalOpen(true);
+      setSubmitToAiMode(true);
+    } else {
+      // Submit directly to AI without variables
+      if (onSubmitToAi) {
+        onSubmitToAi(prompt);
+      }
+    }
+  };
+  
+  const handleVariableSubmitToAi = (prompt, variables) => {
+    if (onSubmitToAi) {
+      onSubmitToAi(prompt, variables);
+    }
+  };
+  
+  const handleViewResponses = (prompt) => {
+    if (onViewResponses) {
+      onViewResponses(prompt);
+    }
+  };
+  
   return (
-    <div className="py-4">
-      <div className="flex justify-between items-center mb-4">
+    <div className="py-4 h-full">
+      <div className="flex justify-between items-center mb-4 sticky top-0 bg-gray-50 pt-1 pb-3 z-10">
         <h2 className="text-xl font-medium text-gray-800">{activeCategoryName}</h2>
         <span className="bg-gray-200 px-2 py-1 rounded-full font-medium count-indicator">
           {promptsWithStatus.length}
@@ -112,7 +144,7 @@ export function PromptList() {
       </div>
       
       {promptsWithStatus.length === 0 ? (
-        <div className="text-center text-gray-500 py-8">
+        <div className="text-center text-gray-500 py-8 bg-white rounded-md shadow">
           <p className="text-lg mb-4">No prompts found in this category.</p>
           <Button
             variant="primary"
@@ -125,13 +157,15 @@ export function PromptList() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4 overflow-y-auto">
           {promptsWithStatus.map((prompt) => (
             <PromptCard
               key={prompt.id}
               prompt={prompt}
               onCopy={handleCopyPrompt}
               onEdit={handleEditPrompt}
+              onSubmitToAi={handleSubmitToAi}
+              onViewResponses={handleViewResponses}
             />
           ))}
         </div>
@@ -140,7 +174,11 @@ export function PromptList() {
       {/* Variable Modal */}
       <VariableModal
         isOpen={isVariableModalOpen}
-        onClose={() => setIsVariableModalOpen(false)}
+        onClose={() => {
+          setIsVariableModalOpen(false);
+          setSubmitToAiMode(false);
+          setSelectedPrompt(null);
+        }}
         prompt={selectedPrompt}
         onCopyComplete={() => {
           if (selectedPrompt?.onCopySuccess) {
@@ -149,6 +187,7 @@ export function PromptList() {
           setSelectedPrompt(null);
           setIsVariableModalOpen(false);
         }}
+        onSubmitToAi={handleVariableSubmitToAi}
       />
       
       {/* Edit Prompt Modal */}

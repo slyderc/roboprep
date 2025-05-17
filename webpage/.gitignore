@@ -9,6 +9,7 @@
 # next.js
 /.next/
 /out/
+.next-env
 
 # production
 /build
@@ -26,6 +27,11 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+
+# OpenAI API keys and configuration
+.openai-credentials
+*.openai-key
+openai.config.js
 
 # vercel
 .vercel

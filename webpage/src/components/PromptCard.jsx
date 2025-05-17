@@ -3,12 +3,20 @@ import { usePrompts } from '../context/PromptContext';
 import { IconButton } from './ui/Button';
 import { detectVariables } from '../lib/formatPromptDisplay';
 
-export function PromptCard({ prompt, onCopy, onEdit }) {
-  const { favorites, toggleFavorite, deletePrompt } = usePrompts();
+export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewResponses }) {
+  const { favorites, toggleFavorite, deletePrompt, countResponsesForPrompt } = usePrompts();
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [responseCount, setResponseCount] = useState(0);
   
   const isFavorite = favorites.includes(prompt.id);
   const hasVariables = detectVariables(prompt.promptText).length > 0;
+  
+  // Get response count when component mounts
+  useEffect(() => {
+    if (prompt?.id) {
+      setResponseCount(countResponsesForPrompt(prompt.id));
+    }
+  }, [prompt?.id, countResponsesForPrompt]);
   
   // Handle toast timeout
   useEffect(() => {
@@ -43,6 +51,18 @@ export function PromptCard({ prompt, onCopy, onEdit }) {
     }
   };
   
+  // New handler for AI submission
+  const handleSubmitToAiClick = (e) => {
+    e.stopPropagation();
+    onSubmitToAi(prompt);
+  };
+  
+  // New handler for viewing responses
+  const handleViewResponsesClick = (e) => {
+    e.stopPropagation();
+    onViewResponses(prompt);
+  };
+  
   return (
     <div 
       className={`
@@ -54,7 +74,20 @@ export function PromptCard({ prompt, onCopy, onEdit }) {
     >
       <div className="flex justify-between items-start">
         <h3 className="text-prompt-title text-blue-600 mb-1">{prompt.title}</h3>
-        {/* Removed star indicator from here */}
+        
+        {/* Response count badge */}
+        {responseCount > 0 && (
+          <span 
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewResponses(prompt);
+            }}
+            className="inline-flex items-center justify-center h-5 min-w-5 px-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium cursor-pointer hover:bg-purple-200"
+            title={`View ${responseCount} saved response${responseCount === 1 ? '' : 's'}`}
+          >
+            {responseCount}
+          </span>
+        )}
       </div>
       
       <p className="text-prompt-desc text-gray-600 mb-2">
@@ -126,6 +159,54 @@ export function PromptCard({ prompt, onCopy, onEdit }) {
               </svg>
             }
           />
+          
+          {/* New Submit to AI button */}
+          <IconButton
+            onClick={handleSubmitToAiClick}
+            title="Submit to AI"
+            className="hover:text-purple-600"
+            icon={
+              <svg 
+                className="w-4 h-4" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth="2" 
+                  d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" 
+                />
+              </svg>
+            }
+          />
+          
+          {/* View Response History button */}
+          {responseCount > 0 && (
+            <IconButton
+              onClick={handleViewResponsesClick}
+              title={`View ${responseCount} Response${responseCount !== 1 ? 's' : ''}`}
+              className="hover:text-purple-600"
+              icon={
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                  />
+                </svg>
+              }
+            />
+          )}
           
           <IconButton
             onClick={handleEditClick}

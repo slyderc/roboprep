@@ -19,6 +19,11 @@ debug*.js
 .env.test.local
 .env.production.local
 
+# OpenAI API keys and configuration
+.openai-credentials
+*.openai-key
+openai.config.js
+
 # Logs
 logs
 *.log

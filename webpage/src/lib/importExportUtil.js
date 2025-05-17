@@ -2,23 +2,34 @@ import storage from './storage';
 import { showToast } from './toastUtil';
 
 /**
- * Exports user prompts to a JSON file
+ * Exports user prompts and responses to a JSON file
+ * @param {boolean} includeResponses - Whether to include AI responses in the export
  * @returns {Promise<boolean>} Success flag
  */
-export async function exportPromptData() {
+export async function exportPromptData(includeResponses = true) {
   try {
-    const { userPrompts = [] } = await storage.get({ userPrompts: [] });
+    const data = await storage.get({
+      userPrompts: [],
+      userCategories: [],
+      aiResponses: []
+    });
     
-    if (!Array.isArray(userPrompts)) {
+    if (!Array.isArray(data.userPrompts)) {
       throw new Error('Invalid data format for user prompts');
     }
     
     const exportData = { 
       type: 'DJPromptsExport', 
-      version: '1.0', 
+      version: '2.0', 
       timestamp: new Date().toISOString(), 
-      prompts: userPrompts 
+      prompts: data.userPrompts,
+      categories: data.userCategories
     };
+    
+    // Only include responses if requested
+    if (includeResponses && Array.isArray(data.aiResponses)) {
+      exportData.responses = data.aiResponses;
+    }
     
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -27,7 +38,7 @@ export async function exportPromptData() {
     // Create a link and trigger download
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dj_prompts_export_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `roboprep_export_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     
     // Clean up
@@ -42,11 +53,14 @@ export async function exportPromptData() {
 }
 
 /**
- * Imports prompts from a JSON file with validation and duplicate checking
+ * Imports prompts and responses from a JSON file with validation and duplicate checking
  * @param {File} file - The JSON file to import
- * @returns {Promise<{success: boolean, newPromptsCount: number, duplicateCount: number, error?: string}>} Result object
+ * @param {Object} options - Import options
+ * @param {boolean} options.skipDuplicates - Whether to skip duplicates when importing
+ * @param {boolean} options.includeResponses - Whether to import responses
+ * @returns {Promise<{success: boolean, newPromptsCount: number, duplicateCount: number, responsesCount: number, error?: string}>} Result object
  */
-export async function importPromptData(file) {
+export async function importPromptData(file, options = { skipDuplicates: true, includeResponses: true }) {
   try {
     // Read the file
     const fileContent = await readFileAsText(file);
@@ -73,22 +87,126 @@ export async function importPromptData(file) {
       throw new Error('Import file does not contain valid prompts data');
     }
     
-    // Get existing prompts for duplicate checking
-    const { userPrompts = [] } = await storage.get({ userPrompts: [] });
+    // Get existing data for duplicate checking
+    const currentData = await storage.get({
+      userPrompts: [],
+      userCategories: [],
+      aiResponses: []
+    });
+    
+    // Initialize import statistics
+    const importStats = {
+      prompts: { total: 0, imported: 0, skipped: 0 },
+      categories: { total: 0, imported: 0, skipped: 0 },
+      responses: { total: 0, imported: 0, skipped: 0 }
+    };
     
     // Process prompts for import
-    const { newPrompts, duplicates } = await processPromptsForImport(importData.prompts, userPrompts);
+    const { newPrompts, duplicates } = await processPromptsForImport(
+      importData.prompts, 
+      currentData.userPrompts
+    );
+    
+    importStats.prompts.total = importData.prompts.length;
+    importStats.prompts.imported = newPrompts.length;
+    importStats.prompts.skipped = duplicates.length;
     
     // Save the new prompts if there are any
     if (newPrompts.length > 0) {
-      const updatedPrompts = [...userPrompts, ...newPrompts];
+      const updatedPrompts = [...currentData.userPrompts, ...newPrompts];
       await storage.set({ userPrompts: updatedPrompts });
+    }
+    
+    // Process categories if available
+    if (importData.categories && Array.isArray(importData.categories)) {
+      importStats.categories.total = importData.categories.length;
+      
+      // Get a map of existing category IDs and names for duplicate checking
+      const existingCategoryMap = new Map();
+      currentData.userCategories.forEach(cat => {
+        existingCategoryMap.set(cat.id, cat.name);
+        existingCategoryMap.set(cat.name.toLowerCase(), cat.id);
+      });
+      
+      // Process each category
+      const categoriesToImport = [];
+      
+      for (const category of importData.categories) {
+        // Skip categories without required fields
+        if (!category.id || !category.name) {
+          importStats.categories.skipped++;
+          continue;
+        }
+        
+        // Skip duplicates if option is set
+        if (options.skipDuplicates && (
+          existingCategoryMap.has(category.id) || 
+          existingCategoryMap.has(category.name.toLowerCase())
+        )) {
+          importStats.categories.skipped++;
+          continue;
+        }
+        
+        // Add to import list with a new ID
+        categoriesToImport.push({
+          ...category,
+          id: `user_cat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          isUserCreated: true
+        });
+        importStats.categories.imported++;
+      }
+      
+      // Update storage with imported categories
+      if (categoriesToImport.length > 0) {
+        const updatedCategories = [...currentData.userCategories, ...categoriesToImport];
+        await storage.set({ userCategories: updatedCategories });
+      }
+    }
+    
+    // Process responses if available and import is enabled
+    if (options.includeResponses && importData.responses && Array.isArray(importData.responses)) {
+      importStats.responses.total = importData.responses.length;
+      
+      // Get a map of existing response IDs for duplicate checking
+      const existingResponseIds = new Set(currentData.aiResponses.map(r => r.id));
+      
+      // Process each response
+      const responsesToImport = [];
+      
+      for (const response of importData.responses) {
+        // Skip responses without required fields
+        if (!response.id || !response.promptId || !response.responseText) {
+          importStats.responses.skipped++;
+          continue;
+        }
+        
+        // Skip duplicates if option is set
+        if (options.skipDuplicates && existingResponseIds.has(response.id)) {
+          importStats.responses.skipped++;
+          continue;
+        }
+        
+        // Add to import list with a new ID
+        responsesToImport.push({
+          ...response,
+          id: `response_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          createdAt: response.createdAt || new Date().toISOString()
+        });
+        importStats.responses.imported++;
+      }
+      
+      // Update storage with imported responses
+      if (responsesToImport.length > 0) {
+        const updatedResponses = [...currentData.aiResponses, ...responsesToImport];
+        await storage.set({ aiResponses: updatedResponses });
+      }
     }
     
     return {
       success: true,
-      newPromptsCount: newPrompts.length,
-      duplicateCount: duplicates.length
+      newPromptsCount: importStats.prompts.imported,
+      duplicateCount: importStats.prompts.skipped,
+      responsesCount: importStats.responses.imported
     };
     
   } catch (error) {
@@ -97,6 +215,7 @@ export async function importPromptData(file) {
       success: false,
       newPromptsCount: 0,
       duplicateCount: 0,
+      responsesCount: 0,
       error: error.message
     };
   }

@@ -20,6 +20,13 @@ Both versions share the same core functionality and data structures, allowing us
 - Star/favorite frequently used prompts
 - Track recently used prompts
 
+### OpenAI Integration (Web App)
+- Submit prompts directly to OpenAI's GPT-4o model
+- Replace variables before submitting to AI
+- Save and manage AI responses
+- Browse response history for each prompt
+- Include responses in import/export functionality
+
 ### Prompt Variables
 - Use template variables in the format `{{variable_name}}` 
 - Variables get replaced when using the prompt
@@ -37,23 +44,26 @@ Both versions share the same core functionality and data structures, allowing us
 Export all custom prompts as a JSON file:
 - Click the Settings icon and select "Export" from the Data Management section
 - Exports in a standardized format with a timestamp
+- Option to include AI responses in the export
 - Format: 
   ```json
   { 
     "type": "DJPromptsExport", 
-    "version": "1.0", 
+    "version": "2.0", 
     "timestamp": "ISO date string", 
-    "prompts": [array of prompt objects] 
+    "prompts": [array of prompt objects],
+    "responses": [array of AI response objects] 
   }
   ```
-- Exported files are named `dj_prompts_export_YYYY-MM-DD.json`
+- Exported files are named `roboprep-export-YYYY-MM-DD.json`
 
 #### Import
 Import prompt packs with duplicate detection:
 - Click the Settings icon and select "Import" from Data Management
 - Select a JSON file in the correct format
+- Option to include or exclude AI responses during import
 - The system checks for duplicates by comparing title and content
-- Shows a report of successfully imported prompts and any duplicates skipped
+- Shows a report of successfully imported prompts, responses, and any duplicates skipped
 - Validates the file format (must contain `type: "DJPromptsExport"` and a `prompts` array)
 
 ## Technical Details
@@ -70,6 +80,8 @@ Import prompt packs with duplicate detection:
 - Uses localStorage for data persistence
 - Compatible with modern browsers
 - Mimics the Chrome extension's storage API for data consistency
+- Integrates with OpenAI API for AI-generated content
+- Supports API error handling with retry logic
 
 ## Storage
 
@@ -80,6 +92,7 @@ Both versions store the following data structures:
 - `recentlyUsed`: Array of IDs for recently used prompts
 - `userCategories`: Array of user-created categories
 - `settings`: Object containing user preferences (theme, font size, etc.)
+- `aiResponses`: Array of AI-generated responses (web app only)
 
 ## Prompt Structure
 
@@ -97,6 +110,25 @@ Each prompt is stored with the following structure:
   "createdAt": "ISO date string",
   "lastUsed": "ISO date string",
   "lastEdited": "ISO date string"
+}
+```
+
+## AI Response Structure (Web App)
+
+AI responses are stored with the following structure:
+```javascript
+{
+  "id": "response_1234567890",           // Unique identifier
+  "promptId": "associated_prompt_id",    // ID of the prompt that generated this response
+  "responseText": "The API response text", // The content returned by OpenAI
+  "modelUsed": "gpt-4o",                 // Model that generated the response
+  "promptTokens": 150,                   // Number of tokens in the prompt
+  "completionTokens": 250,               // Number of tokens in the response
+  "totalTokens": 400,                    // Total tokens used
+  "createdAt": "2023-05-15T14:30:00Z",   // ISO date string
+  "variablesUsed": {                     // Record of variables used in this prompt
+    "variable_name": "value"
+  }
 }
 ```
 
