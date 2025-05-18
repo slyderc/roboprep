@@ -6,7 +6,8 @@ This document provides an overview of the database architecture used in the Robo
 
 - **Database**: SQLite (file-based)
 - **ORM**: Prisma
-- **Node.js Integration**: Native Prisma Client
+- **API Layer**: Next.js API Routes
+- **Client Integration**: Fetch API
 
 ## Database Schema
 
@@ -131,12 +132,103 @@ model Setting {
 
 ## Implementation Details
 
+### Client-Server Architecture
+
+The database implementation follows a client-server architecture:
+
+1. **Server-side**: Next.js API routes handle database operations using Prisma
+2. **Client-side**: JavaScript code makes API requests to the server
+3. **Abstraction Layer**: Storage API maintains compatibility with previous code
+
+This architecture keeps Prisma on the server-side only, avoiding browser compatibility issues.
+
+### API Layer
+
+Database operations are handled through a central API endpoint at `/api/db`:
+
+```javascript
+// API route in src/app/api/db/route.js
+export async function POST(request) {
+  try {
+    const { operation, params } = await request.json();
+    
+    // Handle different database operations
+    switch (operation) {
+      case 'getSetting':
+        return await handleGetSetting(params);
+      case 'getSettings':
+        return await handleGetSettings(params);
+      // ... more operation handlers
+    }
+  } catch (error) {
+    // Error handling
+  }
+}
+```
+
+Operations are dispatched to individual handler functions that interact with the Prisma client.
+
+### Client-Side Storage API
+
+The storage API in `src/lib/storage.js` maintains the same interface as before, but now translates calls into API requests:
+
+```javascript
+// Helper function to make API requests
+async function dbRequest(operation, params = {}) {
+  const options = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operation, params }),
+  };
+  
+  return fetchWithErrorHandling('/api/db', options, operation);
+}
+
+// Example storage API method
+const storage = {
+  get: async (keys) => {
+    // Translate get request to API call
+    if (typeof keys === 'string') {
+      const data = await dbRequest('getSetting', { key: keys });
+      return data;
+    }
+    // ... handle other cases
+  },
+  // ... other methods
+};
+```
+
+### Error Handling
+
+Robust error handling is implemented at multiple levels:
+
+1. **API Routes**: Server-side error handling with appropriate HTTP status codes
+2. **Client API Wrapper**: Utility for handling API responses and errors
+3. **Storage API**: Fallback to defaults when errors occur
+
+The error handling utility provides consistent formatting and user feedback:
+
+```javascript
+export async function fetchWithErrorHandling(url, options, operation, showToastOnError = true) {
+  try {
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      // Process error response
+      // ...
+    }
+    
+    return await response.json();
+  } catch (error) {
+    handleApiError(error, operation, showToastOnError);
+    throw error;
+  }
+}
+```
+
 ### Database Initialization
 
-The database is initialized with the `initializeDatabase()` function in `src/lib/db.js`. This function:
-1. Checks if the database exists
-2. If not, creates the database with the schema defined in Prisma
-3. Creates the DatabaseInfo record with an initial version
+The database is initialized with the `initializeDatabase()` function in `src/lib/db.js`:
 
 ```javascript
 export async function initializeDatabase() {
@@ -165,28 +257,12 @@ export async function initializeDatabase() {
 }
 ```
 
-### Migration from localStorage
-
-The application maintains backward compatibility with the previous localStorage API through a wrapper in `src/lib/storage.js`. This wrapper:
-
-1. Provides the same API interface as the previous localStorage implementation
-2. Translates API calls to Prisma database operations
-3. Handles conversion between JSON and structured data
-
-The existing code can continue to use the same storage API without changes:
-
-```javascript
-// Example of using the storage API (same as before)
-const userPrompts = await storage.get('userPrompts');
-await storage.set({ 'userSettings': { theme: 'dark' } });
-```
-
 ### Data Import/Export
 
 The application supports importing and exporting data as JSON files:
 
-1. **Export**: Retrieves data from the database and creates a JSON file
-2. **Import**: Reads a JSON file and inserts the data into the database
+1. **Export**: Retrieves data from the database via the API and creates a JSON file
+2. **Import**: Reads a JSON file and sends the data to the API for storage
 
 The import functionality includes validation and duplicate checking to ensure data integrity.
 
@@ -219,6 +295,8 @@ The database includes version tracking to manage future schema changes:
 4. **Type Safety**: Prisma provides type checking and validation
 5. **Migration Support**: Structured approach to database schema changes
 6. **Transaction Support**: Atomic operations for data consistency
+7. **Browser Compatibility**: No Prisma code runs in the browser
+8. **Security**: Database operations are isolated to the server
 
 ## Future Considerations
 
@@ -226,3 +304,5 @@ The database includes version tracking to manage future schema changes:
 - More advanced migration strategies for schema changes
 - Potential cloud database support
 - Performance optimizations for larger datasets
+- Caching strategies for frequently accessed data
+- Authentication and authorization for multi-user support

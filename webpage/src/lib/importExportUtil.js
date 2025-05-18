@@ -1,6 +1,6 @@
 import storage from './storage';
 import { showToast } from './toastUtil';
-import { prisma } from './db';
+import { fetchWithErrorHandling } from './apiErrorHandler';
 
 /**
  * Exports user prompts and responses to a JSON file
@@ -288,14 +288,29 @@ async function processResponsesForImport(importedResponses, existingResponses, s
       continue;
     }
     
-    // Check if the prompt exists in the database
-    const promptExists = await prisma.prompt.findUnique({
-      where: { id: response.promptId }
-    });
+    // Check if the prompt exists (using API)
+    const checkPromptParams = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        operation: 'checkPromptExists', 
+        params: { promptId: response.promptId } 
+      }),
+    };
     
-    if (!promptExists) {
-      importStats.responses.skipped++;
-      continue;
+    try {
+      const checkResult = await fetch('/api/db', checkPromptParams);
+      const { exists } = await checkResult.json();
+      
+      if (!exists) {
+        importStats.responses.skipped++;
+        continue;
+      }
+    } catch (error) {
+      // If we can't check, assume the prompt exists and continue
+      console.warn(`Couldn't verify prompt ${response.promptId} exists:`, error);
     }
     
     // Add to import list with a new ID
