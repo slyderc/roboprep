@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Database schema version tracking
+model DatabaseInfo {
+  id          Int      @id @default(1)
+  version     String
+  updatedAt   DateTime @updatedAt
+}
+
+// Prompts - Core and User created
+model Prompt {
+  id           String    @id
+  title        String
+  description  String?
+  categoryId   String?
+  promptText   String
+  tags         PromptTag[]
+  isUserCreated Boolean
+  usageCount   Int       @default(0)
+  createdAt    DateTime
+  lastUsed     DateTime?
+  lastEdited   DateTime?
+  responses    Response[]
+  favorites    Favorite[]
+  recentlyUsed RecentlyUsed[]
+}
+
+// Categories - Core and User created
+model Category {
+  id            String  @id
+  name          String
+  isUserCreated Boolean @default(false)
+}
+
+// Tags
+model Tag {
+  id      String     @id @default(cuid())
+  name    String     @unique
+  prompts PromptTag[]
+}
+
+// Prompt-Tag junction table
+model PromptTag {
+  promptId String
+  tagId    String
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([promptId, tagId])
+}
+
+// Favorites
+model Favorite {
+  id       String @id @default(cuid())
+  promptId String
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([promptId])
+}
+
+// Recently Used
+model RecentlyUsed {
+  id        String   @id @default(cuid())
+  promptId  String
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  usedAt    DateTime @default(now())
+
+  @@index([usedAt])
+}
+
+// AI Responses
+model Response {
+  id              String    @id
+  promptId        String
+  responseText    String
+  modelUsed       String?
+  promptTokens    Int?
+  completionTokens Int?
+  totalTokens     Int?
+  createdAt       DateTime
+  lastEdited      DateTime?
+  variablesUsed   String?   // JSON string for variable values
+  prompt          Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+}
+
+// Settings
+model Setting {
+  id    Int    @id @default(1)
+  key   String @unique
+  value String // JSON string for setting values
+}

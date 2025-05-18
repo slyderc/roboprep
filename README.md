@@ -73,7 +73,7 @@ Import prompt packs with duplicate detection:
 - **Frontend Framework**: React with Next.js 14
 - **Styling**: Tailwind CSS 3.4
 - **State Management**: React Context API
-- **Data Persistence**: localStorage (client-side)
+- **Data Persistence**: SQLite database via Prisma ORM
 - **AI Integration**: OpenAI API with Next.js API routes
 
 ### Project Architecture
@@ -81,6 +81,9 @@ Import prompt packs with duplicate detection:
 #### Application Structure
 ```
 /webpage/
+├── prisma/
+│   ├── schema.prisma        # Database schema definition
+│   └── migrations/          # Database migrations
 ├── public/
 │   ├── assets/
 │   │   ├── icons/
@@ -104,7 +107,8 @@ Import prompt packs with duplicate detection:
 │   │   ├── PromptContext.jsx   # Core data management
 │   │   └── SettingsContext.jsx # User preferences
 │   ├── lib/
-│   │   ├── storage.js          # LocalStorage wrapper
+│   │   ├── db.js               # Database connection module
+│   │   ├── storage.js          # Database storage adapter
 │   │   ├── importExportUtil.js # Import/export functionality
 │   │   ├── apiClient.js        # Client-side API wrapper
 │   │   └── ...
@@ -116,38 +120,41 @@ Import prompt packs with duplicate detection:
 
 ### Data Management
 
-#### Storage Keys
-- `userPrompts`: Array of user-created prompts
-- `corePrompts`: Array of built-in prompts
-- `favorites`: Array of IDs for favorited prompts
-- `recentlyUsed`: Array of IDs for recently used prompts
-- `userCategories`: Array of user-created categories
-- `settings`: Object containing user preferences (theme, font size, etc.)
-- `aiResponses`: Array of AI-generated responses
+#### Database Structure
+The application uses a SQLite database managed through Prisma ORM. See [DATABASE.md](DATABASE.md) for detailed documentation on the database schema and implementation.
 
-#### Storage Implementation
-The web application uses a wrapper around the browser's localStorage API to mimic a Chrome extension's storage API for compatibility:
+Key tables include:
+- `Prompt`: Stores both core and user-created prompts
+- `Category`: Stores prompt categories
+- `Tag`: Stores tags associated with prompts
+- `Response`: Stores AI-generated responses
+- `Favorite`: Tracks favorited prompts
+- `RecentlyUsed`: Tracks recently used prompts
+- `Setting`: Stores application settings
+
+#### Storage API
+The application provides a seamless interface for database operations that maintains compatibility with the previous localStorage-based implementation:
 
 ```javascript
-// src/lib/storage.js
 const storage = {
   get: async (keys) => {
-    const result = {};
-    // Implementation mimics Chrome's storage.local.get
-    return result;
+    // Fetch data from database based on the keys
+    // Returns object with requested keys and values
   },
+  
   set: async (items) => {
-    // Implementation mimics Chrome's storage.local.set
+    // Save data to database
+    // Handles special cases for different data types
   },
-  // Response-specific methods
-  getResponses: async () => {
-    const result = await storage.get({ 'aiResponses': [] });
-    return result.aiResponses;
+  
+  remove: async (keys) => {
+    // Remove data from database
   },
-  saveResponse: async (response) => {
-    const responses = await storage.getResponses();
-    // Save the response and return it
-  },
+  
+  // Additional helper methods for specific data types
+  getResponses: async () => { /* ... */ },
+  saveResponse: async (response) => { /* ... */ },
+  // ...
 };
 ```
 
@@ -156,12 +163,18 @@ const storage = {
 The web application provides integration with OpenAI's GPT-4o model through a secure API:
 
 #### API Configuration
-Environment variables control the OpenAI integration:
+Environment variables control the OpenAI integration and database settings:
 ```
+# OpenAI API settings
 NEXT_PUBLIC_OPENAI_API_KEY=your_api_key_here
 NEXT_PUBLIC_OPENAI_MODEL=gpt-4o
 NEXT_PUBLIC_OPENAI_MAX_TOKENS=2048
 NEXT_PUBLIC_OPENAI_TEMPERATURE=0.7
+
+# Database settings
+DATABASE_URL="file:../roboprep.db"
+DATABASE_POOL_SIZE=5
+DATABASE_INIT_VERSION="1.0.0"
 ```
 
 #### API Client
@@ -267,7 +280,8 @@ AI responses are stored with the following structure:
   "createdAt": "2023-05-15T14:30:00Z",   // ISO date string
   "variablesUsed": {                     // Record of variables used in this prompt
     "variable_name": "value"
-  }
+  },
+  "lastEdited": "2023-05-16T10:15:00Z"   // Timestamp of last edit (if edited)
 }
 ```
 
@@ -282,8 +296,14 @@ AI responses are stored with the following structure:
 ### Web Application
 1. Navigate to the `/webpage` directory
 2. Install dependencies with `npm install`
-3. Create a `.env.local` file with your OpenAI API key and settings
-4. Run the development server with `npm run dev`
-5. Open your browser to `http://localhost:3000`
-6. For production build, use `npm run build`
+3. Create a `.env.local` file with your OpenAI API key and database settings
+4. Initialize the database with `npx prisma migrate dev`
+5. Run the development server with `npm run dev`
+6. Open your browser to `http://localhost:3000`
+7. For production build, use `npm run build`
 
+### Database Management
+- View the database schema in `prisma/schema.prisma`
+- Create migrations with `npx prisma migrate dev --name <migration-name>`
+- Reset the database with `npx prisma migrate reset`
+- View database content with `npx prisma studio`
