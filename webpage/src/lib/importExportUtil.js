@@ -63,8 +63,11 @@ export async function exportPromptData(includeResponses = true) {
  */
 export async function importPromptData(file, options = { skipDuplicates: true, includeResponses: true }) {
   try {
+    console.log('Starting import with options:', options);
+    
     // Read the file
     const fileContent = await readFileAsText(file);
+    console.log(`Read file content, size: ${fileContent.length} bytes`);
     
     // Parse JSON
     let importData;
@@ -88,17 +91,46 @@ export async function importPromptData(file, options = { skipDuplicates: true, i
       throw new Error('Import file does not contain valid prompts data');
     }
     
-    // Get existing data for duplicate checking
+    console.log(`Import file contains ${importData.prompts.length} prompts`);
+    
+    // Process categories first, as prompts may reference them
+    let categoryMap = new Map();
+    if (importData.categories && Array.isArray(importData.categories)) {
+      console.log(`Import file contains ${importData.categories.length} categories`);
+      
+      // Get existing categories
+      const currentCategories = await storage.get({ userCategories: [] });
+      console.log(`Found ${currentCategories.userCategories.length} existing categories`);
+      
+      // Process categories for import
+      const categoryResult = await processCategoriesForImport(
+        importData.categories,
+        currentCategories.userCategories,
+        options.skipDuplicates
+      );
+      
+      // Store the category mapping for prompt processing
+      categoryMap = categoryResult.categoryMap;
+      importStats.categories.imported = categoryResult.newCategories.length;
+      importStats.categories.skipped = categoryResult.duplicates.length;
+      
+      console.log(`Category processing complete: ${categoryResult.newCategories.length} added, ${categoryResult.duplicates.length} skipped`);
+    }
+    
+    // Now get updated categories and other current data for prompt processing
     const currentData = await storage.get({
       userPrompts: [],
       userCategories: [],
       aiResponses: []
     });
     
+    console.log(`Found ${currentData.userCategories.length} categories after category import`);
+    console.log(`Found ${currentData.userPrompts.length} existing prompts`);
+    
     // Initialize import statistics
     const importStats = {
       prompts: { total: 0, imported: 0, skipped: 0 },
-      categories: { total: 0, imported: 0, skipped: 0 },
+      categories: { total: importData.categories?.length || 0, imported: 0, skipped: 0 },
       responses: { total: 0, imported: 0, skipped: 0 }
     };
     
@@ -106,15 +138,19 @@ export async function importPromptData(file, options = { skipDuplicates: true, i
     const { newPrompts, duplicates } = await processPromptsForImport(
       importData.prompts, 
       currentData.userPrompts,
-      options.skipDuplicates
+      options.skipDuplicates,
+      categoryMap
     );
     
     importStats.prompts.total = importData.prompts.length;
     importStats.prompts.imported = newPrompts.length;
     importStats.prompts.skipped = duplicates.length;
     
+    console.log(`Processed prompts: ${newPrompts.length} new, ${duplicates.length} duplicates`);
+    
     // Save the new prompts if there are any
     if (newPrompts.length > 0) {
+      console.log('Adding new prompts to database...');
       // Use the addUserPrompts operation instead of replacing all
       await fetchWithErrorHandling('/api/db', {
         method: 'POST',
@@ -128,18 +164,9 @@ export async function importPromptData(file, options = { skipDuplicates: true, i
       }, 'addUserPrompts');
     }
     
-    // Process categories if available
-    if (importData.categories && Array.isArray(importData.categories)) {
-      await processCategoriesForImport(
-        importData.categories,
-        currentData.userCategories,
-        options.skipDuplicates,
-        importStats
-      );
-    }
-    
     // Process responses if available and import is enabled
     if (options.includeResponses && importData.responses && Array.isArray(importData.responses)) {
+      console.log(`Import file contains ${importData.responses.length} responses`);
       await processResponsesForImport(
         importData.responses,
         currentData.aiResponses,
@@ -147,6 +174,24 @@ export async function importPromptData(file, options = { skipDuplicates: true, i
         importStats
       );
     }
+    
+    // Force a direct update of the context data by directly getting data
+    // This bypasses any caching and ensures the UI has the latest data
+    const updatedPrompts = await fetchWithErrorHandling('/api/db', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        operation: 'getUserPrompts', 
+        params: {} 
+      }),
+    }, 'getUserPrompts');
+    
+    console.log(`Fetched ${updatedPrompts.length} prompts after import complete`);
+    
+    // Force store the updated prompts to storage cache
+    await storage.set({ userPrompts: updatedPrompts });
     
     return {
       success: true,
@@ -172,9 +217,13 @@ export async function importPromptData(file, options = { skipDuplicates: true, i
  * @param {Array} importedPrompts - Prompts from import file
  * @param {Array} existingPrompts - Existing user prompts
  * @param {boolean} skipDuplicates - Whether to skip duplicates
+ * @param {Map} categoryMap - Mapping from old category IDs to new category IDs
  * @returns {Promise<{newPrompts: Array, duplicates: Array}>} Processed prompts
  */
-async function processPromptsForImport(importedPrompts, existingPrompts, skipDuplicates) {
+async function processPromptsForImport(importedPrompts, existingPrompts, skipDuplicates, categoryMap = new Map()) {
+  console.log(`Processing ${importedPrompts.length} prompts for import`);
+  console.log(`Category map contains ${categoryMap.size} mappings`);
+  
   const newPrompts = [];
   const duplicates = [];
   
@@ -193,24 +242,34 @@ async function processPromptsForImport(importedPrompts, existingPrompts, skipDup
     );
     
     if (isDuplicate && skipDuplicates) {
+      console.log(`Skipping duplicate prompt: ${importedPrompt.title}`);
       duplicates.push(importedPrompt);
     } else {
-      // Generate a new ID but preserve other properties including category
+      // Map the category ID if it exists and has a mapping
+      let category = importedPrompt.category || '';
+      if (category && categoryMap.has(category)) {
+        category = categoryMap.get(category);
+        console.log(`Mapped category from ${importedPrompt.category} to ${category} for prompt: ${importedPrompt.title}`);
+      }
+      
+      // Generate a new ID but preserve other properties including the mapped category
       const newPrompt = {
         ...importedPrompt,
         id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         isUserCreated: true,
-        // Make sure category is preserved
-        category: importedPrompt.category || '',
+        // Update category to the mapped value if available
+        category: category,
         // Ensure other properties have defaults
         usageCount: importedPrompt.usageCount || 0,
         createdAt: importedPrompt.createdAt || new Date().toISOString()
       };
       
+      console.log(`Adding prompt for import: ${newPrompt.title} (Category: ${newPrompt.category})`);
       newPrompts.push(newPrompt);
     }
   }
   
+  console.log(`Prompt processing complete: ${newPrompts.length} to import, ${duplicates.length} duplicates`);
   return { newPrompts, duplicates };
 }
 
@@ -219,11 +278,10 @@ async function processPromptsForImport(importedPrompts, existingPrompts, skipDup
  * @param {Array} importedCategories - Categories from import file
  * @param {Array} existingCategories - Existing user categories
  * @param {boolean} skipDuplicates - Whether to skip duplicates
- * @param {Object} importStats - Import statistics to update
- * @returns {Promise<void>}
+ * @returns {Promise<{categoryMap: Map, newCategories: Array, duplicates: Array}>} Processed categories
  */
-async function processCategoriesForImport(importedCategories, existingCategories, skipDuplicates, importStats) {
-  importStats.categories.total = importedCategories.length;
+async function processCategoriesForImport(importedCategories, existingCategories, skipDuplicates) {
+  console.log(`Processing ${importedCategories.length} categories for import`);
   
   // Get a map of existing category IDs and names for duplicate checking
   const existingCategoryMap = new Map();
@@ -234,34 +292,53 @@ async function processCategoriesForImport(importedCategories, existingCategories
   
   // Process each category
   const categoriesToImport = [];
+  const duplicates = [];
+  const oldToNewCategoryIdMap = new Map(); // Map old IDs to new IDs for prompt reference
   
   for (const category of importedCategories) {
     // Skip categories without required fields
     if (!category.id || !category.name) {
-      importStats.categories.skipped++;
+      console.log(`Skipping invalid category: ${JSON.stringify(category)}`);
       continue;
     }
     
+    const originalId = category.id;
+    
+    // Check if a category with this name already exists
+    const duplicateByName = existingCategories.find(
+      cat => cat.name.toLowerCase() === category.name.toLowerCase()
+    );
+    
     // Skip duplicates if option is set
-    if (skipDuplicates && (
-      existingCategoryMap.has(category.id) || 
-      existingCategoryMap.has(category.name.toLowerCase())
-    )) {
-      importStats.categories.skipped++;
+    if (skipDuplicates && duplicateByName) {
+      console.log(`Skipping duplicate category by name: ${category.name}`);
+      duplicates.push(category);
+      
+      // Map the old ID to the existing category ID for prompt references
+      oldToNewCategoryIdMap.set(originalId, duplicateByName.id);
       continue;
     }
     
     // Add to import list with a new ID
-    categoriesToImport.push({
+    const newId = `user_cat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    
+    // Store the mapping from old to new ID
+    oldToNewCategoryIdMap.set(originalId, newId);
+    
+    const newCategory = {
       ...category,
-      id: `user_cat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: newId,
       isUserCreated: true
-    });
-    importStats.categories.imported++;
+    };
+    
+    categoriesToImport.push(newCategory);
+    console.log(`Category to import: ${newCategory.name} (${newCategory.id})`);
   }
   
   // Update storage with imported categories
   if (categoriesToImport.length > 0) {
+    console.log(`Adding ${categoriesToImport.length} new categories to database...`);
+    
     // Use the addUserCategories operation instead of replacing all
     await fetchWithErrorHandling('/api/db', {
       method: 'POST',
@@ -274,6 +351,12 @@ async function processCategoriesForImport(importedCategories, existingCategories
       }),
     }, 'addUserCategories');
   }
+  
+  return { 
+    categoryMap: oldToNewCategoryIdMap, 
+    newCategories: categoriesToImport,
+    duplicates
+  };
 }
 
 /**
