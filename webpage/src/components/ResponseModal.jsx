@@ -67,8 +67,8 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
       
       // Show loading state
       if (typeof onNewResponse === 'function') {
-        // Use the provided callback for generating a new response
-        onNewResponse(promptData);
+        // Use the provided callback for generating a new response with variables from current response
+        onNewResponse(promptData, response?.variablesUsed || {});
       } else {
         // Generate a new response directly
         try {
@@ -76,8 +76,8 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
           setAiResponse(null);
           setIsLoading(true);
           
-          // Generate new response with same prompt
-          const result = await submitPromptToAi(promptData);
+          // Generate new response with same prompt and variables
+          const result = await submitPromptToAi(promptData, response?.variablesUsed || {});
           
           // Update the response
           setAiResponse(result);
