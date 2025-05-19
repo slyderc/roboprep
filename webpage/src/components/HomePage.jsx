@@ -125,14 +125,20 @@ export function HomePage() {
         response={aiResponse}
         loading={isLoading}
         error={responseError}
-        onNewResponse={(prompt) => {
-          // Close the current response modal
-          setResponseModalOpen(false);
+        onNewResponse={async (prompt) => {
+          // Generate a new response with the same prompt
+          setIsLoading(true);
+          setResponseError(null);
           
-          // Wait for modal to close, then trigger a new AI request
-          setTimeout(() => {
-            handleSubmitToAi(prompt);
-          }, 300);
+          try {
+            const result = await submitPromptToAi(prompt);
+            setAiResponse(result);
+          } catch (error) {
+            console.error('Error submitting to AI:', error);
+            setResponseError(error);
+          } finally {
+            setIsLoading(false);
+          }
         }}
       />
       

@@ -21,6 +21,9 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState('');
   const [hasEdits, setHasEdits] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [responseError, setResponseError] = useState(null);
+  const [aiResponse, setAiResponse] = useState(null);
   const textareaRef = useRef(null);
   
   // Handle save response
@@ -54,29 +57,61 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
   };
   
   // Handle new response request
-  const handleNewResponse = () => {
+  const handleNewResponse = async () => {
     if (promptData) {
-      // If onNewResponse prop was provided, use it
+      // Reset states
+      setSaved(false);
+      setCopySuccess(false);
+      setIsEditing(false);
+      setHasEdits(false);
+      
+      // Show loading state
       if (typeof onNewResponse === 'function') {
+        // Use the provided callback for generating a new response
         onNewResponse(promptData);
       } else {
-        // Otherwise, close this modal so the user can generate a new response
-        handleClose();
-        
-        // Use setTimeout to allow modal to close before showing any alert
-        setTimeout(() => {
-          alert('To generate a new response, click the "Submit to AI" button on the prompt card.');
-        }, 300);
+        // Generate a new response directly
+        try {
+          // Set loading state
+          setAiResponse(null);
+          setIsLoading(true);
+          
+          // Generate new response with same prompt
+          const result = await submitPromptToAi(promptData);
+          
+          // Update the response
+          setAiResponse(result);
+          setEditedText(result.responseText);
+        } catch (error) {
+          console.error('Error generating new response:', error);
+          setResponseError(error);
+        } finally {
+          setIsLoading(false);
+        }
       }
     }
   };
   
-  // Initialize edited text when response changes
+  // Initialize edited text and internal response state when response changes
   useEffect(() => {
-    if (response?.responseText) {
-      setEditedText(response.responseText);
+    if (response) {
+      setAiResponse(response);
+      setEditedText(response.responseText || '');
+      // Reset loading and error states
+      setIsLoading(false);
+      setResponseError(null);
     }
   }, [response]);
+  
+  // Sync with external loading state
+  useEffect(() => {
+    setIsLoading(loading);
+  }, [loading]);
+  
+  // Sync with external error state
+  useEffect(() => {
+    setResponseError(error);
+  }, [error]);
   
   // Handle copy to clipboard
   const handleCopy = () => {
@@ -145,19 +180,19 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="AI Response" maxWidth="2xl">
       <div className="p-2">
-        {loading && (
+        {(loading || isLoading) && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         )}
         
-        {error && (
+        {(error || responseError) && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            <strong>Error:</strong> {error.message || 'Failed to get AI response'}
+            <strong>Error:</strong> {(error || responseError)?.message || 'Failed to get AI response'}
           </div>
         )}
         
-        {!loading && !error && response && (
+        {!(loading || isLoading) && !(error || responseError) && (aiResponse || response) && (
           <div>
             {/* Prompt title if available */}
             {promptData && (
@@ -189,11 +224,11 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
             </div>
             
             {/* Response metadata */}
-            {response.modelUsed && (
+            {(aiResponse || response)?.modelUsed && (
               <div className="mb-4 text-xs text-gray-500">
-                <p>Model: {response.modelUsed}</p>
-                {response.totalTokens && (
-                  <p>Tokens used: {response.totalTokens} ({response.promptTokens} prompt, {response.completionTokens} completion)</p>
+                <p>Model: {(aiResponse || response).modelUsed}</p>
+                {(aiResponse || response).totalTokens && (
+                  <p>Tokens used: {(aiResponse || response).totalTokens} ({(aiResponse || response).promptTokens} prompt, {(aiResponse || response).completionTokens} completion)</p>
                 )}
               </div>
             )}
