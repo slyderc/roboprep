@@ -38,7 +38,6 @@ export function PromptProvider({ children }) {
   // Initialize storage
   useEffect(() => {
     async function initializeStorage() {
-      console.log('Initializing PromptContext storage...');
       
       try {
         // First, fetch main data from storage
@@ -51,21 +50,17 @@ export function PromptProvider({ children }) {
           'settings': { fontSize: 'medium' }
         });
         
-        console.log(`Fetched data: ${data.corePrompts.length} core prompts, ${data.userPrompts.length} user prompts`);
         
         // Fetch responses separately
         const responseData = await storage.getResponses();
-        console.log(`Fetched ${responseData.length} responses`);
         
         // Check if we need to initialize the database
         if (data.corePrompts.length === 0 && Array.isArray(defaultPrompts) && defaultPrompts.length > 0) {
-          console.log('No core prompts found. Triggering database initialization...');
           
           // Trigger database initialization via API
           try {
             const initResponse = await fetch('/api/init');
             if (initResponse.ok) {
-              console.log('Database initialization triggered. Fetching data again...');
               
               // Fetch data again after initialization
               const refreshedData = await storage.get({
@@ -80,13 +75,12 @@ export function PromptProvider({ children }) {
               // Fetch responses separately
               const refreshedResponses = await storage.getResponses();
               
-              console.log(`Refreshed data: ${refreshedData.corePrompts.length} core prompts, ${refreshedData.userPrompts.length} user prompts, ${refreshedResponses.length} responses`);
               
               // Use the refreshed data
               setUserPrompts(refreshedData.userPrompts);
               setCorePrompts(refreshedData.corePrompts.length > 0 ? refreshedData.corePrompts : defaultPrompts);
-              setFavorites(refreshedData.favorites);
-              setRecentlyUsed(refreshedData.recentlyUsed);
+              setFavorites(Array.isArray(refreshedData.favorites) ? refreshedData.favorites : []);
+              setRecentlyUsed(Array.isArray(refreshedData.recentlyUsed) ? refreshedData.recentlyUsed : []);
               setUserCategories(refreshedData.userCategories);
               setSettings(refreshedData.settings);
               setResponses(refreshedResponses);
@@ -101,8 +95,8 @@ export function PromptProvider({ children }) {
         // Use the fetched data
         setUserPrompts(data.userPrompts);
         setCorePrompts(data.corePrompts.length > 0 ? data.corePrompts : defaultPrompts);
-        setFavorites(data.favorites);
-        setRecentlyUsed(data.recentlyUsed);
+        setFavorites(Array.isArray(data.favorites) ? data.favorites : []);
+        setRecentlyUsed(Array.isArray(data.recentlyUsed) ? data.recentlyUsed : []);
         setUserCategories(data.userCategories);
         setSettings(data.settings);
         setResponses(responseData);
@@ -232,14 +226,31 @@ export function PromptProvider({ children }) {
   }
   
   async function toggleFavorite(promptId) {
-    const updatedFavorites = favorites.includes(promptId)
-      ? favorites.filter(id => id !== promptId)
-      : [...favorites, promptId];
-    
-    setFavorites(updatedFavorites);
-    await storage.set({ favorites: updatedFavorites });
-    
-    return updatedFavorites.includes(promptId);
+    try {
+      // Make sure the prompt exists before toggling favorite
+      const promptExists = await storage.promptExists(promptId);
+      if (!promptExists) {
+        console.error(`Cannot toggle favorite: Prompt with ID ${promptId} does not exist`);
+        return false;
+      }
+
+      const updatedFavorites = favorites.includes(promptId)
+        ? favorites.filter(id => id !== promptId)
+        : [...favorites, promptId];
+      
+      // Update the local state
+      setFavorites(updatedFavorites);
+      
+      // Persist to the database
+      await storage.set({ favorites: updatedFavorites });
+      
+      console.log(`Favorites updated. Total: ${updatedFavorites.length}`);
+      return updatedFavorites.includes(promptId);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      // Revert the local state change if the database operation failed
+      return favorites.includes(promptId);
+    }
   }
   
   async function addToRecentlyUsed(promptId) {
@@ -407,7 +418,6 @@ export function PromptProvider({ children }) {
       const updatedResponses = [...responses, savedResponse];
       setResponses(updatedResponses);
       
-      console.log('Response saved successfully:', savedResponse.id);
       return savedResponse;
     } catch (error) {
       console.error('Error saving response:', error);
@@ -424,7 +434,6 @@ export function PromptProvider({ children }) {
         // Update the local state only after successful deletion
         const updatedResponses = responses.filter(r => r.id !== responseId);
         setResponses(updatedResponses);
-        console.log('Response deleted successfully:', responseId);
         return true;
       }
       return false;
@@ -456,7 +465,6 @@ export function PromptProvider({ children }) {
       );
       
       setResponses(updatedResponses);
-      console.log('Response updated successfully:', savedResponse.id);
       
       return savedResponse;
     } catch (error) {
@@ -512,13 +520,15 @@ export function PromptProvider({ children }) {
       // Get responses separately using direct method
       const responseData = await storage.getResponses();
       
-      console.log(`Refreshed data: ${data.userPrompts.length} user prompts, ${data.corePrompts.length} core prompts, ${responseData.length} responses`);
+      // Get favorites directly using the dedicated method
+      const favoritesData = await storage.getFavorites();
+      
       
       // Update state with refreshed data
       setUserPrompts(data.userPrompts);
       setCorePrompts(data.corePrompts);
-      setFavorites(data.favorites);
-      setRecentlyUsed(data.recentlyUsed);
+      setFavorites(favoritesData);
+      setRecentlyUsed(Array.isArray(data.recentlyUsed) ? data.recentlyUsed : []);
       setUserCategories(data.userCategories);
       setSettings(data.settings);
       setResponses(responseData);

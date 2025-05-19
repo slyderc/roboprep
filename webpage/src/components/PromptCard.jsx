@@ -73,7 +73,9 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
       title={hasVariables ? "Click to replace variables and copy" : prompt.title}
     >
       <div className="flex justify-between items-start">
-        <h3 className="text-prompt-title text-blue-600 mb-1">{prompt.title}</h3>
+        <h3 className="text-prompt-title text-blue-600 font-semibold mb-2 inline-block py-1 px-3 bg-blue-100 rounded-md">
+          {prompt.title}
+        </h3>
         
         {/* Response count badge */}
         {responseCount > 0 && (
@@ -90,7 +92,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
         )}
       </div>
       
-      <p className="text-prompt-desc text-gray-600 mb-2">
+      <p className="text-prompt-desc text-gray-600 mb-2 ml-1">
         {prompt.description || 'No description available.'}
       </p>
       
@@ -99,7 +101,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           {prompt.tags.map((tag, index) => (
             <span
               key={index}
-              className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-prompt-tag"
+              className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-prompt-tag theme-aware-tag"
             >
               {tag}
             </span>
@@ -107,15 +109,47 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
         </div>
       )}
       
-      <div className="flex items-center justify-between gap-1 mt-2 border-t pt-2 border-gray-100">
+      <div className="flex items-center gap-1 mt-2 border-t pt-2 border-gray-100">
         {/* Toast notification */}
         {showCopyToast && (
-          <div className="bg-green-500 text-white text-xs py-1 px-2 rounded-md animate-fadeIn">
+          <div className="bg-green-500 text-white text-xs py-1 px-2 rounded-md animate-fadeIn absolute top-2 left-1/2 transform -translate-x-1/2">
             Copied to clipboard!
           </div>
         )}
         
-        <div className="flex items-center space-x-1 ml-auto">
+        {/* Delete button on the far left */}
+        <div className="flex-none">
+          {prompt.isUserCreated && (
+            <IconButton
+              onClick={handleDeleteClick}
+              title="Delete Prompt"
+              variant="danger"
+              className="px-1 hover:bg-red-100 rounded"
+              icon={
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              }
+            />
+          )}
+        </div>
+        
+        {/* Visual separator when delete button is shown */}
+        {prompt.isUserCreated && <div className="border-r border-gray-200 h-6 mx-2"></div>}
+        
+        <div className="flex items-center space-x-1 ml-auto flex-grow justify-end">
+          
           <IconButton
             onClick={handleFavoriteClick}
             title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
@@ -183,31 +217,6 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
             }
           />
           
-          {/* View Response History button */}
-          {responseCount > 0 && (
-            <IconButton
-              onClick={handleViewResponsesClick}
-              title={`View ${responseCount} Response${responseCount !== 1 ? 's' : ''}`}
-              className="hover:text-purple-600"
-              icon={
-                <svg 
-                  className="w-4 h-4" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24" 
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                  />
-                </svg>
-              }
-            />
-          )}
-          
           <IconButton
             onClick={handleEditClick}
             title="Edit Prompt"
@@ -230,11 +239,12 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
             }
           />
           
-          {prompt.isUserCreated && (
+          {/* View Response History button */}
+          {responseCount > 0 && (
             <IconButton
-              onClick={handleDeleteClick}
-              title="Delete Prompt"
-              variant="danger"
+              onClick={handleViewResponsesClick}
+              title={`View ${responseCount} Response${responseCount !== 1 ? 's' : ''}`}
+              className="hover:text-purple-600"
               icon={
                 <svg 
                   className="w-4 h-4" 
@@ -247,7 +257,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
                     strokeLinecap="round" 
                     strokeLinejoin="round" 
                     strokeWidth="2" 
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
                   />
                 </svg>
               }

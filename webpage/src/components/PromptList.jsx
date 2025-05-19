@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { usePrompts } from '../context/PromptContext';
 import { PromptCard } from './PromptCard';
 import { VariableModal } from './VariableModal';
 import { NewPromptModal } from './NewPromptModal';
+import { TagFilter } from './TagFilter';
 import { Button } from './ui/Button';
 
 export function PromptList({ onSubmitToAi, onViewResponses }) {
@@ -16,17 +17,37 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
     submitPromptToAi
   } = usePrompts();
   
+  // Get all available tags from all prompts
+  const allTags = useMemo(() => {
+    const allPrompts = [...corePrompts, ...userPrompts];
+    const tagSet = new Set();
+    
+    allPrompts.forEach(prompt => {
+      if (prompt.tags && Array.isArray(prompt.tags)) {
+        prompt.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    
+    return [...tagSet].sort((a, b) => a.localeCompare(b));
+  }, [corePrompts, userPrompts]);
+  
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [promptToEdit, setPromptToEdit] = useState(null);
   const [submitToAiMode, setSubmitToAiMode] = useState(false);
+  const [selectedTags, setSelectedTags] = useState([]);
   
   // Get current category name
   const activeCategoryName = useMemo(() => {
     const category = categories.find(c => c.id === activeCategory);
     return category ? category.name : 'All Prompts';
   }, [categories, activeCategory]);
+  
+  // Reset tag filters when changing categories
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [activeCategory]);
   
   // Filter prompts based on active category
   const filteredPrompts = useMemo(() => {
@@ -80,11 +101,27 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
   
   // Add favorite status to prompts
   const promptsWithStatus = useMemo(() => {
-    return filteredPrompts.map(prompt => ({
+    // First filter by category
+    let prompts = filteredPrompts.map(prompt => ({
       ...prompt,
       isFavorite: favorites.includes(prompt.id)
     }));
-  }, [filteredPrompts, favorites]);
+    
+    // Filter by selected tags if there are any selected
+    if (selectedTags.length > 0) {
+      prompts = prompts.filter(prompt => {
+        // If the prompt has no tags, don't show it when tag filters are active
+        if (!prompt.tags || !Array.isArray(prompt.tags) || prompt.tags.length === 0) {
+          return false;
+        }
+        
+        // Check if the prompt has ALL of the selected tags (AND logic)
+        return selectedTags.every(selectedTag => prompt.tags.includes(selectedTag));
+      });
+    }
+    
+    return prompts;
+  }, [filteredPrompts, favorites, selectedTags]);
   
   const handleCopyPrompt = (prompt, onCopySuccess) => {
     setSelectedPrompt(prompt);
@@ -134,13 +171,26 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
     }
   };
   
+  // Handle tag filter changes
+  const handleTagFilterChange = useCallback((tags) => {
+    setSelectedTags(tags);
+  }, []);
+  
   return (
     <div className="py-4 h-full">
-      <div className="flex justify-between items-center mb-4 sticky top-0 bg-gray-50 pt-1 pb-3 z-10">
-        <h2 className="text-xl font-medium text-gray-800">{activeCategoryName}</h2>
-        <span className="bg-gray-200 px-2 py-1 rounded-full font-medium count-indicator">
-          {promptsWithStatus.length}
-        </span>
+      <div className="sticky top-0 bg-gray-50 pt-1 pb-3 z-10 dark:bg-background-color">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-xl font-medium text-gray-800">{activeCategoryName}</h2>
+          <span className="bg-gray-200 px-2 py-1 rounded-full font-medium count-indicator">
+            {promptsWithStatus.length}
+          </span>
+        </div>
+        
+        {/* Tag Filter - Only show if there are tags in the current category */}
+        <TagFilter 
+          prompts={filteredPrompts} 
+          onFilterChange={handleTagFilterChange} 
+        />
       </div>
       
       {promptsWithStatus.length === 0 ? (
