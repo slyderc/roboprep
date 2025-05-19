@@ -307,3 +307,12 @@ AI responses are stored with the following structure:
 - Create migrations with `npx prisma migrate dev --name <migration-name>`
 - Reset the database with `npx prisma migrate reset`
 - View database content with `npx prisma studio`
+- Initialize the database with `npm run db:init`
+- Populate with default data using `npm run db:populate`
+
+If you encounter database errors when starting the application, try these steps:
+
+1. Make sure the database file exists at `../roboprep.db` (one directory up from the project folder)
+2. Reset the database using `npm run db:reset`
+3. Check that Prisma migrations have been applied
+4. Verify that the database contains default data by running `npm run db:populate`

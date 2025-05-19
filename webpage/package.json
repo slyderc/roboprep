@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:setup": "npx prisma migrate dev --name init",
+    "db:reset": "npx prisma migrate reset --force",
+    "db:init": "node scripts/init-db.js",
+    "db:populate": "node scripts/populate-db.js"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
