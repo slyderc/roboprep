@@ -41,18 +41,21 @@ export function PromptProvider({ children }) {
       console.log('Initializing PromptContext storage...');
       
       try {
-        // First, fetch data from storage
+        // First, fetch main data from storage
         const data = await storage.get({
           'userPrompts': [],
           'corePrompts': defaultPrompts,
           'favorites': [],
           'recentlyUsed': [],
           'userCategories': [],
-          'settings': { fontSize: 'medium' },
-          'aiResponses': []
+          'settings': { fontSize: 'medium' }
         });
         
         console.log(`Fetched data: ${data.corePrompts.length} core prompts, ${data.userPrompts.length} user prompts`);
+        
+        // Fetch responses separately
+        const responseData = await storage.getResponses();
+        console.log(`Fetched ${responseData.length} responses`);
         
         // Check if we need to initialize the database
         if (data.corePrompts.length === 0 && Array.isArray(defaultPrompts) && defaultPrompts.length > 0) {
@@ -71,11 +74,13 @@ export function PromptProvider({ children }) {
                 'favorites': [],
                 'recentlyUsed': [],
                 'userCategories': [],
-                'settings': { fontSize: 'medium' },
-                'aiResponses': []
+                'settings': { fontSize: 'medium' }
               });
               
-              console.log(`Refreshed data: ${refreshedData.corePrompts.length} core prompts, ${refreshedData.userPrompts.length} user prompts`);
+              // Fetch responses separately
+              const refreshedResponses = await storage.getResponses();
+              
+              console.log(`Refreshed data: ${refreshedData.corePrompts.length} core prompts, ${refreshedData.userPrompts.length} user prompts, ${refreshedResponses.length} responses`);
               
               // Use the refreshed data
               setUserPrompts(refreshedData.userPrompts);
@@ -84,7 +89,7 @@ export function PromptProvider({ children }) {
               setRecentlyUsed(refreshedData.recentlyUsed);
               setUserCategories(refreshedData.userCategories);
               setSettings(refreshedData.settings);
-              setResponses(refreshedData.aiResponses);
+              setResponses(refreshedResponses);
               setInitialized(true);
               return;
             }
@@ -100,7 +105,7 @@ export function PromptProvider({ children }) {
         setRecentlyUsed(data.recentlyUsed);
         setUserCategories(data.userCategories);
         setSettings(data.settings);
-        setResponses(data.aiResponses);
+        setResponses(responseData);
         setInitialized(true);
       } catch (error) {
         console.error('Error initializing storage:', error);
@@ -387,27 +392,46 @@ export function PromptProvider({ children }) {
       throw new Error('Response must have a promptId');
     }
     
+    // Prepare the response object with required fields
     const newResponse = {
       ...response,
       id: `response_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       createdAt: new Date().toISOString()
     };
     
-    const updatedResponses = [...responses, newResponse];
-    setResponses(updatedResponses);
-    await storage.set({ 'aiResponses': updatedResponses });
-    return newResponse;
+    try {
+      // Use the direct saveResponse API endpoint
+      const savedResponse = await storage.saveResponse(newResponse);
+      
+      // Update the local state
+      const updatedResponses = [...responses, savedResponse];
+      setResponses(updatedResponses);
+      
+      console.log('Response saved successfully:', savedResponse.id);
+      return savedResponse;
+    } catch (error) {
+      console.error('Error saving response:', error);
+      throw error;
+    }
   }
   
   async function deleteResponse(responseId) {
-    const updatedResponses = responses.filter(r => r.id !== responseId);
-    
-    if (updatedResponses.length < responses.length) {
-      setResponses(updatedResponses);
-      await storage.set({ 'aiResponses': updatedResponses });
-      return true;
+    try {
+      // Use the direct deleteResponse API endpoint
+      const result = await storage.deleteResponse(responseId);
+      
+      if (result) {
+        // Update the local state only after successful deletion
+        const updatedResponses = responses.filter(r => r.id !== responseId);
+        setResponses(updatedResponses);
+        console.log('Response deleted successfully:', responseId);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error deleting response:', error);
+      return false;
     }
-    return false;
   }
   
   async function updateResponse(updatedResponse) {
@@ -416,25 +440,29 @@ export function PromptProvider({ children }) {
       throw new Error('Response must have an ID to update');
     }
     
-    // Find the index of the response to update
-    const responseIndex = responses.findIndex(r => r.id === updatedResponse.id);
-    
-    if (responseIndex === -1) {
-      throw new Error('Response not found');
+    try {
+      // Add lastEdited timestamp
+      const responseToUpdate = {
+        ...updatedResponse,
+        lastEdited: new Date().toISOString()
+      };
+      
+      // Save the updated response using the direct API
+      const savedResponse = await storage.saveResponse(responseToUpdate);
+      
+      // Update the local state
+      const updatedResponses = responses.map(r => 
+        r.id === savedResponse.id ? savedResponse : r
+      );
+      
+      setResponses(updatedResponses);
+      console.log('Response updated successfully:', savedResponse.id);
+      
+      return savedResponse;
+    } catch (error) {
+      console.error('Error updating response:', error);
+      throw error;
     }
-    
-    // Create updated array with the modified response
-    const updatedResponses = [...responses];
-    updatedResponses[responseIndex] = {
-      ...updatedResponse,
-      lastEdited: new Date().toISOString() 
-    };
-    
-    // Update state and storage
-    setResponses(updatedResponses);
-    await storage.set({ 'aiResponses': updatedResponses });
-    
-    return updatedResponse;
   }
   
   function getResponsesForPrompt(promptId) {
@@ -469,25 +497,31 @@ export function PromptProvider({ children }) {
   // Function to refresh all data from the database
   async function refreshData() {
     try {
+      console.log('Refreshing all data from database...');
+      
+      // Get main data
       const data = await storage.get({
         'userPrompts': [],
         'corePrompts': defaultPrompts,
         'favorites': [],
         'recentlyUsed': [],
         'userCategories': [],
-        'settings': { fontSize: 'medium' },
-        'aiResponses': []
+        'settings': { fontSize: 'medium' }
       });
       
-      console.log('Refreshed data from database:', data);
+      // Get responses separately using direct method
+      const responseData = await storage.getResponses();
       
+      console.log(`Refreshed data: ${data.userPrompts.length} user prompts, ${data.corePrompts.length} core prompts, ${responseData.length} responses`);
+      
+      // Update state with refreshed data
       setUserPrompts(data.userPrompts);
       setCorePrompts(data.corePrompts);
       setFavorites(data.favorites);
       setRecentlyUsed(data.recentlyUsed);
       setUserCategories(data.userCategories);
       setSettings(data.settings);
-      setResponses(data.aiResponses);
+      setResponses(responseData);
       
       return true;
     } catch (error) {
