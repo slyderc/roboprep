@@ -14,6 +14,8 @@ async function dbRequest(operation, params = {}) {
     body: JSON.stringify({ operation, params }),
   };
   
+  // Skip logging for performance reasons
+  
   return fetchWithErrorHandling('/api/db', options, operation);
 }
 
@@ -26,25 +28,57 @@ const storage = {
    */
   get: async (keys) => {
     try {
-      console.log('storage.get called with keys:', keys);
+      // Process get request
       
       // Handle single string key
       if (typeof keys === 'string') {
+        // Special handling for favorites
+        if (keys === 'favorites') {
+          const favorites = await dbRequest('getFavorites');
+          return { favorites };
+        }
+        
         const data = await dbRequest('getSetting', { key: keys });
-        console.log(`Fetched data for key '${keys}':`, data);
         return data;
       } 
       // Handle array of keys
       else if (Array.isArray(keys)) {
+        // Check if favorites is in the keys
+        if (keys.includes('favorites')) {
+          const result = {};
+          // Get favorites directly
+          const favorites = await dbRequest('getFavorites');
+          result.favorites = favorites;
+          
+          // Get remaining keys
+          const otherKeys = keys.filter(k => k !== 'favorites');
+          if (otherKeys.length > 0) {
+            const otherData = await dbRequest('getSettings', { keys: otherKeys });
+            Object.assign(result, otherData);
+          }
+          
+          return result;
+        }
+        
         const data = await dbRequest('getSettings', { keys });
-        console.log('Fetched data for keys array:', data);
         return data;
       } 
       // Handle object with default values
       else {
+        const settingKeys = Object.keys(keys);
+        const result = {};
+        
+        // Special handling for favorites
+        if (settingKeys.includes('favorites')) {
+          const favorites = await dbRequest('getFavorites');
+          result.favorites = favorites;
+        }
+        
+        // Get the rest of the data
         const data = await dbRequest('getSettings', { keys });
-        console.log('Fetched data for keys object:', data);
-        return data;
+        
+        // Merge the results, preferring favorites we fetched explicitly
+        return { ...data, ...result };
       }
     } catch (error) {
       console.error('Error fetching data from database:', error);
@@ -59,7 +93,6 @@ const storage = {
         Object.keys(keys).forEach(key => result[key] = keys[key]);
       }
       
-      console.log('Returning default values due to error:', result);
       return result;
     }
   },
@@ -237,6 +270,19 @@ const storage = {
     } catch (error) {
       console.error('Error counting responses for prompt:', error);
       return 0;
+    }
+  },
+  
+  /**
+   * Get favorites directly from the database
+   * @returns {Promise<string[]>} Array of prompt IDs that are favorited
+   */
+  getFavorites: async () => {
+    try {
+      return await dbRequest('getFavorites');
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      return [];
     }
   }
 };

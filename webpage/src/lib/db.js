@@ -27,13 +27,13 @@ export async function initializeDatabase() {
       await prisma.$queryRaw`SELECT 1 FROM DatabaseInfo LIMIT 1`;
       tablesExist = true;
     } catch (e) {
-      console.log('Database tables do not exist yet. Will create them.');
+      // Tables don't exist yet
       // Tables don't exist, we'll handle this below
     }
     
     // If tables don't exist, we can't continue until migrations are run
     if (!tablesExist) {
-      console.log('Please run: npx prisma migrate dev --name init');
+      // Migration needed
       return false;
     }
     
@@ -44,7 +44,7 @@ export async function initializeDatabase() {
 
     // If not initialized, create it with the initial version and populate default data
     if (!dbInfo) {
-      console.log('Database not initialized. Creating initial data...');
+      // Database needs initialization
       
       // Create database info record
       await prisma.databaseInfo.create({
@@ -63,9 +63,9 @@ export async function initializeDatabase() {
       // Create default settings
       await createDefaultSettings();
       
-      console.log(`Database initialized with version ${process.env.DATABASE_INIT_VERSION || '1.0.0'} and default data`);
+      // Database initialized
     } else {
-      console.log(`Database already initialized, version: ${dbInfo.version}`);
+      // Database already initialized
     }
 
     return true;
