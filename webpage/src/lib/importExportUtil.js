@@ -115,8 +115,17 @@ export async function importPromptData(file, options = { skipDuplicates: true, i
     
     // Save the new prompts if there are any
     if (newPrompts.length > 0) {
-      const updatedPrompts = [...currentData.userPrompts, ...newPrompts];
-      await storage.set({ userPrompts: updatedPrompts });
+      // Use the addUserPrompts operation instead of replacing all
+      await fetchWithErrorHandling('/api/db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          operation: 'addUserPrompts', 
+          params: { prompts: newPrompts } 
+        }),
+      }, 'addUserPrompts');
     }
     
     // Process categories if available
@@ -189,7 +198,7 @@ async function processPromptsForImport(importedPrompts, existingPrompts, skipDup
       // Generate a new ID but preserve other properties including category
       const newPrompt = {
         ...importedPrompt,
-        id: isDuplicate ? importedPrompt.id : `user_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         isUserCreated: true,
         // Make sure category is preserved
         category: importedPrompt.category || '',
@@ -253,8 +262,17 @@ async function processCategoriesForImport(importedCategories, existingCategories
   
   // Update storage with imported categories
   if (categoriesToImport.length > 0) {
-    const updatedCategories = [...existingCategories, ...categoriesToImport];
-    await storage.set({ userCategories: updatedCategories });
+    // Use the addUserCategories operation instead of replacing all
+    await fetchWithErrorHandling('/api/db', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        operation: 'addUserCategories', 
+        params: { categories: categoriesToImport } 
+      }),
+    }, 'addUserCategories');
   }
 }
 
@@ -289,7 +307,7 @@ async function processResponsesForImport(importedResponses, existingResponses, s
     }
     
     // Check if the prompt exists (using API)
-    const checkPromptParams = {
+    const checkResult = await fetchWithErrorHandling('/api/db', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -298,19 +316,11 @@ async function processResponsesForImport(importedResponses, existingResponses, s
         operation: 'checkPromptExists', 
         params: { promptId: response.promptId } 
       }),
-    };
+    }, 'checkPromptExists', false);
     
-    try {
-      const checkResult = await fetch('/api/db', checkPromptParams);
-      const { exists } = await checkResult.json();
-      
-      if (!exists) {
-        importStats.responses.skipped++;
-        continue;
-      }
-    } catch (error) {
-      // If we can't check, assume the prompt exists and continue
-      console.warn(`Couldn't verify prompt ${response.promptId} exists:`, error);
+    if (!checkResult.exists) {
+      importStats.responses.skipped++;
+      continue;
     }
     
     // Add to import list with a new ID
@@ -324,8 +334,17 @@ async function processResponsesForImport(importedResponses, existingResponses, s
   
   // Update storage with imported responses
   if (responsesToImport.length > 0) {
-    const updatedResponses = [...existingResponses, ...responsesToImport];
-    await storage.set({ aiResponses: updatedResponses });
+    // Use the addResponses operation instead of replacing all
+    await fetchWithErrorHandling('/api/db', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        operation: 'addResponses', 
+        params: { responses: responsesToImport } 
+      }),
+    }, 'addResponses');
   }
 }
 

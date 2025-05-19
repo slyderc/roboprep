@@ -407,6 +407,34 @@ export function PromptProvider({ children }) {
     }
   }
   
+  // Function to refresh all data from the database
+  async function refreshData() {
+    try {
+      const data = await storage.get({
+        'userPrompts': [],
+        'corePrompts': defaultPrompts,
+        'favorites': [],
+        'recentlyUsed': [],
+        'userCategories': [],
+        'settings': { fontSize: 'medium' },
+        'aiResponses': []
+      });
+      
+      setUserPrompts(data.userPrompts);
+      setCorePrompts(data.corePrompts);
+      setFavorites(data.favorites);
+      setRecentlyUsed(data.recentlyUsed);
+      setUserCategories(data.userCategories);
+      setSettings(data.settings);
+      setResponses(data.aiResponses);
+      
+      return true;
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      return false;
+    }
+  }
+
   // Return all context values
   const value = {
     // Data
@@ -448,6 +476,9 @@ export function PromptProvider({ children }) {
     getResponsesForPrompt,
     countResponsesForPrompt,
     submitPromptToAi,
+    
+    // Data management
+    refreshData,
     
     // Helper function
     allPrompts: [...corePrompts, ...userPrompts]

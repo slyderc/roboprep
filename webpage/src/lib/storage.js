@@ -94,6 +94,35 @@ const storage = {
   },
   
   /**
+   * Add data to the database (without replacing existing data)
+   * @param {Object} items - Key-value pairs to add
+   * @returns {Promise<void>}
+   */
+  add: async (items) => {
+    try {
+      // Process each item to be added
+      const operations = Object.entries(items).map(async ([key, value]) => {
+        // Special case handling for specific data structures
+        if (key === 'userPrompts') {
+          return dbRequest('addUserPrompts', { prompts: value });
+        } else if (key === 'userCategories') {
+          return dbRequest('addUserCategories', { categories: value });
+        } else if (key === 'aiResponses') {
+          return dbRequest('addResponses', { responses: value });
+        } else {
+          // For other keys, use regular set operation
+          return dbRequest('setSetting', { key, value });
+        }
+      });
+      
+      await Promise.all(operations);
+    } catch (error) {
+      console.error('Error adding data to database:', error);
+      throw error;
+    }
+  },
+  
+  /**
    * Remove data from the database
    * @param {string|string[]} keys - Key(s) to remove
    * @returns {Promise<void>}
@@ -139,6 +168,21 @@ const storage = {
     } catch (error) {
       console.error('Error clearing database:', error);
       throw error;
+    }
+  },
+  
+  /**
+   * Check if a prompt exists
+   * @param {string} promptId - Prompt ID to check
+   * @returns {Promise<boolean>} Whether the prompt exists
+   */
+  promptExists: async (promptId) => {
+    try {
+      const result = await dbRequest('checkPromptExists', { promptId });
+      return result.exists;
+    } catch (error) {
+      console.error('Error checking if prompt exists:', error);
+      return false;
     }
   },
   

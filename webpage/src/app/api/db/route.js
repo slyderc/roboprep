@@ -39,14 +39,20 @@ export async function POST(request) {
         return await handleStoreUserPrompts(params);
       case 'storeCorePrompts':
         return await handleStoreCorePrompts(params);
+      case 'addUserPrompts':
+        return await handleAddUserPrompts(params);
       case 'storeFavorites':
         return await handleStoreFavorites(params);
       case 'storeRecentlyUsed':
         return await handleStoreRecentlyUsed(params);
       case 'storeUserCategories':
         return await handleStoreUserCategories(params);
+      case 'addUserCategories':
+        return await handleAddUserCategories(params);
       case 'storeResponses':
         return await handleStoreResponses(params);
+      case 'addResponses':
+        return await handleAddResponses(params);
       case 'clearData':
         return await handleClearData();
       case 'checkPromptExists':
@@ -278,19 +284,25 @@ async function handleCountResponsesForPrompt({ promptId }) {
   return NextResponse.json({ count });
 }
 
-// Store user prompts
+// Store user prompts (replacing all)
 async function handleStoreUserPrompts({ prompts }) {
   await storePrompts(prompts, true);
   return NextResponse.json({ success: true });
 }
 
-// Store core prompts
+// Store core prompts (replacing all)
 async function handleStoreCorePrompts({ prompts }) {
   await storePrompts(prompts, false);
   return NextResponse.json({ success: true });
 }
 
-// Store prompts helper
+// Add user prompts (appending to existing)
+async function handleAddUserPrompts({ prompts }) {
+  await addPrompts(prompts, true);
+  return NextResponse.json({ success: true });
+}
+
+// Store prompts helper (replacing all)
 async function storePrompts(prompts, isUserCreated) {
   // Delete existing prompts of this type
   await prisma.prompt.deleteMany({
@@ -299,28 +311,57 @@ async function storePrompts(prompts, isUserCreated) {
   
   // Create new prompts with their tags
   for (const prompt of prompts) {
-    // Extract tags
-    const tags = prompt.tags || [];
+    await createPromptWithTags(prompt, isUserCreated);
+  }
+  
+  return true;
+}
+
+// Add prompts helper (appending to existing)
+async function addPrompts(prompts, isUserCreated) {
+  // Create new prompts with their tags
+  for (const prompt of prompts) {
+    // Check if prompt already exists
+    const existingPrompt = await prisma.prompt.findUnique({
+      where: { id: prompt.id }
+    });
     
-    // Ensure prompt has all required fields
-    const promptData = {
-      id: prompt.id,
-      title: prompt.title,
-      description: prompt.description || '',
-      categoryId: prompt.category || null,
-      promptText: prompt.promptText,
-      isUserCreated,
-      usageCount: prompt.usageCount || 0,
-      createdAt: new Date(prompt.createdAt || new Date()),
-      lastUsed: prompt.lastUsed ? new Date(prompt.lastUsed) : null,
-      lastEdited: prompt.lastEdited ? new Date(prompt.lastEdited) : null,
-    };
+    // Skip if already exists
+    if (existingPrompt) {
+      continue;
+    }
     
-    // Create prompt
+    await createPromptWithTags(prompt, isUserCreated);
+  }
+  
+  return true;
+}
+
+// Helper to create a prompt with its tags
+async function createPromptWithTags(prompt, isUserCreated) {
+  // Extract tags
+  const tags = prompt.tags || [];
+  
+  // Ensure prompt has all required fields
+  const promptData = {
+    id: prompt.id,
+    title: prompt.title,
+    description: prompt.description || '',
+    categoryId: prompt.category || null,
+    promptText: prompt.promptText,
+    isUserCreated,
+    usageCount: prompt.usageCount || 0,
+    createdAt: new Date(prompt.createdAt || new Date()),
+    lastUsed: prompt.lastUsed ? new Date(prompt.lastUsed) : null,
+    lastEdited: prompt.lastEdited ? new Date(prompt.lastEdited) : null,
+  };
+  
+  // Create prompt
+  try {
     await prisma.prompt.create({
       data: promptData
     });
-    
+  
     // Create tags if needed and connect to prompt
     for (const tagName of tags) {
       // Find or create tag
@@ -342,9 +383,12 @@ async function storePrompts(prompts, isUserCreated) {
         }
       });
     }
+    
+    return true;
+  } catch (error) {
+    console.error('Error creating prompt:', error);
+    return false;
   }
-  
-  return true;
 }
 
 // Store favorites
@@ -397,7 +441,7 @@ async function handleStoreRecentlyUsed({ recentlyUsed }) {
   return NextResponse.json({ success: true });
 }
 
-// Store user categories
+// Store user categories (replacing all)
 async function handleStoreUserCategories({ categories }) {
   // Delete existing user categories
   await prisma.category.deleteMany({
@@ -418,13 +462,72 @@ async function handleStoreUserCategories({ categories }) {
   return NextResponse.json({ success: true });
 }
 
-// Store responses
+// Add user categories (appending to existing)
+async function handleAddUserCategories({ categories }) {
+  // Create new categories
+  for (const category of categories) {
+    // Check if category already exists
+    const existingCategory = await prisma.category.findUnique({
+      where: { id: category.id }
+    });
+    
+    // Skip if already exists
+    if (existingCategory) {
+      continue;
+    }
+    
+    await prisma.category.create({
+      data: {
+        id: category.id,
+        name: category.name,
+        isUserCreated: true
+      }
+    });
+  }
+  
+  return NextResponse.json({ success: true });
+}
+
+// Store responses (replacing all)
 async function handleStoreResponses({ responses }) {
   // Delete existing responses
   await prisma.response.deleteMany({});
   
   // Create new responses
   for (const response of responses) {
+    await prisma.response.create({
+      data: {
+        id: response.id,
+        promptId: response.promptId,
+        responseText: response.responseText,
+        modelUsed: response.modelUsed,
+        promptTokens: response.promptTokens,
+        completionTokens: response.completionTokens,
+        totalTokens: response.totalTokens,
+        createdAt: new Date(response.createdAt),
+        lastEdited: response.lastEdited ? new Date(response.lastEdited) : null,
+        variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
+      }
+    });
+  }
+  
+  return NextResponse.json({ success: true });
+}
+
+// Add responses (appending to existing)
+async function handleAddResponses({ responses }) {
+  // Create new responses
+  for (const response of responses) {
+    // Check if response already exists
+    const existingResponse = await prisma.response.findUnique({
+      where: { id: response.id }
+    });
+    
+    // Skip if already exists
+    if (existingResponse) {
+      continue;
+    }
+    
     await prisma.response.create({
       data: {
         id: response.id,
