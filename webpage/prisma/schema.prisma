@@ -17,6 +17,43 @@ model DatabaseInfo {
   updatedAt   DateTime @updatedAt
 }
 
+// User accounts for authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String    // Hashed password
+  firstName     String?
+  lastName      String?
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  settings      UserSetting[]
+  favorites     UserFavorite[]
+  recentlyUsed  UserRecentlyUsed[]
+  sessions      Session[]
+}
+
+// User Authentication Sessions
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// User settings
+model UserSetting {
+  id        String  @id @default(cuid())
+  userId    String
+  key       String
+  value     String  // JSON string for setting values
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, key])
+}
+
 // Prompts - Core and User created
 model Prompt {
   id           String    @id
@@ -32,7 +69,9 @@ model Prompt {
   lastEdited   DateTime?
   responses    Response[]
   favorites    Favorite[]
+  userFavorites UserFavorite[]
   recentlyUsed RecentlyUsed[]
+  userRecentlyUsed UserRecentlyUsed[]
 }
 
 // Categories - Core and User created
@@ -59,7 +98,7 @@ model PromptTag {
   @@id([promptId, tagId])
 }
 
-// Favorites
+// Global Favorites (legacy, maintained for backward compatibility)
 model Favorite {
   id       String @id @default(cuid())
   promptId String
@@ -68,13 +107,37 @@ model Favorite {
   @@unique([promptId])
 }
 
-// Recently Used
+// User-specific Favorites
+model UserFavorite {
+  id       String @id @default(cuid())
+  userId   String
+  promptId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promptId])
+}
+
+// Global Recently Used (legacy, maintained for backward compatibility)
 model RecentlyUsed {
   id        String   @id @default(cuid())
   promptId  String
   prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
   usedAt    DateTime @default(now())
 
+  @@index([usedAt])
+}
+
+// User-specific Recently Used
+model UserRecentlyUsed {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  usedAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promptId])
   @@index([usedAt])
 }
 
@@ -93,7 +156,7 @@ model Response {
   prompt          Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
 }
 
-// Settings
+// Global Settings (legacy, maintained for backward compatibility)
 model Setting {
   key   String @id
   value String // JSON string for setting values

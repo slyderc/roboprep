@@ -4,6 +4,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import defaultPrompts from '../data/prompts.json';
+import { hashPassword, migrateLegacyData } from './auth';
 import fs from 'fs';
 import path from 'path';
 
@@ -50,7 +51,7 @@ export async function initializeDatabase() {
       await prisma.databaseInfo.create({
         data: {
           id: 1,
-          version: process.env.DATABASE_INIT_VERSION || '1.0.0',
+          version: process.env.DATABASE_INIT_VERSION || '2.0.0',
         },
       });
       
@@ -63,15 +64,68 @@ export async function initializeDatabase() {
       // Create default settings
       await createDefaultSettings();
       
+      // Create default admin user
+      const adminUserId = await createDefaultAdminUser();
+      
+      // Migrate legacy data to the admin user if we created one
+      if (adminUserId) {
+        await migrateLegacyData(adminUserId);
+      }
+      
       // Database initialized
     } else {
-      // Database already initialized
+      // Check if we need to upgrade the database version
+      const currentVersion = dbInfo.version;
+      if (currentVersion === '1.0.0') {
+        // Upgrade from 1.0.0 to 2.0.0 - add multi-user support
+        
+        // Create default admin user if no users exist
+        const userCount = await prisma.user.count();
+        if (userCount === 0) {
+          const adminUserId = await createDefaultAdminUser();
+          
+          // Migrate legacy data to the admin user if we created one
+          if (adminUserId) {
+            await migrateLegacyData(adminUserId);
+          }
+        }
+        
+        // Update database version
+        await updateDatabaseVersion('2.0.0');
+      }
     }
 
     return true;
   } catch (error) {
     console.error('Database initialization error:', error);
     return false;
+  }
+}
+
+/**
+ * Create default admin user
+ * @returns {Promise<string|null>} - The ID of the created admin user, or null if creation failed
+ */
+async function createDefaultAdminUser() {
+  try {
+    const hashedPassword = await hashPassword('RoboPrepMe');
+    
+    const adminUser = await prisma.user.create({
+      data: {
+        email: 'admin@example.com',
+        password: hashedPassword,
+        firstName: 'Admin',
+        lastName: 'User',
+        isAdmin: true,
+      },
+    });
+    
+    console.log('Created default admin user');
+    
+    return adminUser.id;
+  } catch (error) {
+    console.error('Error creating default admin user:', error);
+    return null;
   }
 }
 

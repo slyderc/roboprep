@@ -8,6 +8,7 @@ This document provides an overview of the database architecture used in the Robo
 - **ORM**: Prisma
 - **API Layer**: Next.js API Routes
 - **Client Integration**: Fetch API
+- **Authentication**: JWT tokens with secure cookie storage
 
 ## Database Schema
 
@@ -20,6 +21,52 @@ model DatabaseInfo {
   id          Int      @id @default(1)
   version     String
   updatedAt   DateTime @updatedAt
+}
+```
+
+#### User
+Stores user accounts for authentication and user-specific data.
+```prisma
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String    // Hashed password
+  firstName     String?
+  lastName      String?
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  settings      UserSetting[]
+  favorites     UserFavorite[]
+  recentlyUsed  UserRecentlyUsed[]
+  sessions      Session[]
+}
+```
+
+#### Session
+Manages user authentication sessions.
+```prisma
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+#### UserSetting
+Stores user-specific settings.
+```prisma
+model UserSetting {
+  id        String  @id @default(cuid())
+  userId    String
+  key       String
+  value     String  // JSON string for setting values
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, key])
 }
 ```
 
@@ -40,7 +87,9 @@ model Prompt {
   lastEdited   DateTime?
   responses    Response[]
   favorites    Favorite[]
+  userFavorites UserFavorite[]
   recentlyUsed RecentlyUsed[]
+  userRecentlyUsed UserRecentlyUsed[]
 }
 ```
 
@@ -77,27 +126,32 @@ model PromptTag {
 }
 ```
 
-#### Favorite
-Stores user-favorited prompts.
+#### UserFavorite
+Stores user-specific favorite prompts.
 ```prisma
-model Favorite {
+model UserFavorite {
   id       String @id @default(cuid())
+  userId   String
   promptId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
 
-  @@unique([promptId])
+  @@unique([userId, promptId])
 }
 ```
 
-#### RecentlyUsed
-Tracks recently used prompts with timestamps.
+#### UserRecentlyUsed
+Tracks user-specific recently used prompts with timestamps.
 ```prisma
-model RecentlyUsed {
+model UserRecentlyUsed {
   id        String   @id @default(cuid())
+  userId    String
   promptId  String
-  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
   usedAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, promptId])
   @@index([usedAt])
 }
 ```
@@ -120,15 +174,83 @@ model Response {
 }
 ```
 
-#### Setting
-Stores application settings as key-value pairs.
+#### Legacy Models
+These models are maintained for backward compatibility:
+
 ```prisma
+// Global Favorites (legacy, maintained for backward compatibility)
+model Favorite {
+  id       String @id @default(cuid())
+  promptId String
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([promptId])
+}
+
+// Global Recently Used (legacy, maintained for backward compatibility)
+model RecentlyUsed {
+  id        String   @id @default(cuid())
+  promptId  String
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  usedAt    DateTime @default(now())
+
+  @@index([usedAt])
+}
+
+// Global Settings (legacy, maintained for backward compatibility)
 model Setting {
-  id    Int    @id @default(1)
-  key   String @unique
+  key   String @id
   value String // JSON string for setting values
 }
 ```
+
+## Authentication Implementation
+
+The application implements a robust authentication system with the following features:
+
+1. **User Account Management**:
+   - Secure registration with email validation
+   - Password encryption using bcrypt
+   - Login/logout functionality
+   - Password reset capabilities
+   - User profile management
+
+2. **Session Management**:
+   - JWT-based authentication
+   - Secure HTTP-only cookies for token storage
+   - 12-hour session expiration
+   - Session invalidation on logout
+
+3. **Authorization**:
+   - Role-based access control (admin vs. regular user)
+   - Protected API routes requiring authentication
+   - Administrative functions restricted to admin users
+
+4. **Security Measures**:
+   - Password hashing with bcrypt
+   - CSRF protection
+   - Rate limiting for login attempts
+   - Session fixation prevention
+   - XSS protection
+
+## Multi-User Data Isolation
+
+The database schema is designed to support multi-user environments with proper data isolation:
+
+1. **User-Specific Data**:
+   - Each user has their own favorites (UserFavorite)
+   - Each user has their own recently used prompts (UserRecentlyUsed)
+   - Each user has their own settings (UserSetting)
+   - Authentication data is stored securely (User, Session)
+
+2. **Shared Data**:
+   - All prompts are accessible to all users
+   - AI responses are shared among all users
+   - Categories and tags are global
+
+3. **Data Migration Strategy**:
+   - Legacy tables (Favorite, RecentlyUsed, Setting) are maintained for backward compatibility
+   - New user-specific tables contain user-linked data
 
 ## Implementation Details
 
@@ -167,13 +289,46 @@ Categories in the database support both system-defined and user-created categori
    - "All Prompts", "Recently Used", and "Favorites" are virtual categories handled by the application logic
    - These don't exist as database records but are generated from database queries:
      - "All Prompts" - Shows all prompts regardless of category
-     - "Recently Used" - Generated from the `RecentlyUsed` table
-     - "Favorites" - Generated from the `Favorite` table
+     - "Recently Used" - Generated from the `UserRecentlyUsed` table (user-specific)
+     - "Favorites" - Generated from the `UserFavorite` table (user-specific)
 
 3. **Category Organization**:
    - Category order is managed through client-side logic
    - The application loads categories from the database and then applies sorting rules
    - Categories starting with numbers are sorted numerically, then remaining categories alphabetically
+
+### Authentication Flow
+
+The authentication system follows these key flows:
+
+1. **Registration Flow**:
+   - User submits registration form with email and password
+   - Server validates input and checks for existing email
+   - Password is hashed using bcrypt
+   - New user record is created in the database
+   - Initial user settings are created
+   - JWT token is generated and sent to the client
+   - User is logged in automatically
+
+2. **Login Flow**:
+   - User submits login form with email and password
+   - Server validates credentials against the database
+   - On successful validation, a new session is created
+   - JWT token is generated with user ID and admin status
+   - Token is stored in an HTTP-only cookie
+   - User is redirected to the main application
+
+3. **Authentication Check Flow**:
+   - Client makes requests with the JWT cookie
+   - Server middleware validates the JWT token
+   - If valid, the user's ID is attached to the request
+   - If invalid or expired, the user is redirected to login
+   - Protected routes/APIs check for the authenticated user
+
+4. **User Administration Flow**:
+   - Admin users can access the user management interface
+   - Interface allows creating new users, resetting passwords, and enabling/disabling accounts
+   - Only users with admin flag can access these functions
 
 ### Client-Server Architecture
 
@@ -211,9 +366,24 @@ export async function POST(request) {
 
 Operations are dispatched to individual handler functions that interact with the Prisma client.
 
+### Authentication API Endpoints
+
+Authentication is handled through dedicated API routes:
+
+```javascript
+// Authentication API routes structure
+/api/auth/
+  ├─ register/ - Handles user registration
+  ├─ login/ - Handles user login
+  ├─ logout/ - Handles user logout
+  ├─ me/ - Gets current user data
+  ├─ change-password/ - Handles password changes
+  └─ reset-password/ - Handles password resets
+```
+
 ### Client-Side Storage API
 
-The storage API in `src/lib/storage.js` maintains the same interface as before, but now translates calls into API requests:
+The storage API in `src/lib/storage.js` maintains the same interface as before, but now translates calls into API requests and includes the authenticated user's context:
 
 ```javascript
 // Helper function to make API requests
@@ -222,6 +392,7 @@ async function dbRequest(operation, params = {}) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ operation, params }),
+    credentials: 'include' // Important for authentication cookies
   };
   
   return fetchWithErrorHandling('/api/db', options, operation);
@@ -248,6 +419,7 @@ Robust error handling is implemented at multiple levels:
 1. **API Routes**: Server-side error handling with appropriate HTTP status codes
 2. **Client API Wrapper**: Utility for handling API responses and errors
 3. **Storage API**: Fallback to defaults when errors occur
+4. **Authentication Errors**: Specialized handling for authentication failures
 
 The error handling utility provides consistent formatting and user feedback:
 
@@ -257,7 +429,14 @@ export async function fetchWithErrorHandling(url, options, operation, showToastO
     const response = await fetch(url, options);
     
     if (!response.ok) {
-      // Process error response
+      // Handle authentication errors specifically
+      if (response.status === 401) {
+        // Redirect to login page if unauthenticated
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        return;
+      }
+      
+      // Process other error responses
       // ...
     }
     
@@ -271,7 +450,7 @@ export async function fetchWithErrorHandling(url, options, operation, showToastO
 
 ### Database Initialization
 
-The database is initialized with the `initializeDatabase()` function in `src/lib/db.js`:
+The database is initialized with the `initializeDatabase()` function in `src/lib/db.js`, now including initial admin user creation:
 
 ```javascript
 export async function initializeDatabase() {
@@ -286,10 +465,23 @@ export async function initializeDatabase() {
       await prisma.databaseInfo.create({
         data: {
           id: 1,
-          version: process.env.DATABASE_INIT_VERSION || '1.0.0',
+          version: process.env.DATABASE_INIT_VERSION || '2.0.0',
         },
       });
-      console.log(`Database initialized with version ${process.env.DATABASE_INIT_VERSION || '1.0.0'}`);
+      console.log(`Database initialized with version ${process.env.DATABASE_INIT_VERSION || '2.0.0'}`);
+      
+      // Create initial admin user
+      const hashedPassword = await bcrypt.hash('RoboPrepMe', 12);
+      await prisma.user.create({
+        data: {
+          email: 'admin@example.com',
+          password: hashedPassword,
+          isAdmin: true,
+          firstName: 'Admin',
+          lastName: 'User'
+        }
+      });
+      console.log('Created initial admin user');
     }
 
     return true;
@@ -300,24 +492,33 @@ export async function initializeDatabase() {
 }
 ```
 
-### Data Import/Export
+### Data Migration Strategy
 
-The application supports importing and exporting data as JSON files:
+For existing installations, data migration follows these steps:
 
-1. **Export**: Retrieves data from the database via the API and creates a JSON file
-2. **Import**: Reads a JSON file and sends the data to the API for storage
+1. **User Creation**: Create a default admin user
+2. **Settings Migration**: Move global settings to user-specific settings
+3. **Favorites Migration**: Copy global favorites to the default user's favorites
+4. **Recently Used Migration**: Copy global recently used items to the default user's recently used
 
-The import functionality includes validation and duplicate checking to ensure data integrity.
+This approach ensures a smooth transition from single-user to multi-user without data loss.
 
 ## Environment Configuration
 
-Database configuration is managed through environment variables:
+Database and authentication configuration is managed through environment variables:
 
 ```
 # Database Settings
 DATABASE_URL="file:../roboprep.db"
 DATABASE_POOL_SIZE=5
-DATABASE_INIT_VERSION="1.0.0"
+DATABASE_INIT_VERSION="2.0.0"
+
+# Authentication Settings
+JWT_SECRET="your-secure-random-secret"
+JWT_EXPIRATION="12h"
+COOKIE_NAME="robo_auth"
+COOKIE_SECURE=true
+COOKIE_HTTP_ONLY=true
 ```
 
 These settings can be configured in the `.env.local` file.
@@ -330,74 +531,14 @@ The database includes version tracking to manage future schema changes:
 - The version is set during initial database creation
 - Functions `getDatabaseVersion()` and `updateDatabaseVersion()` manage version information
 
-## Benefits of the New Architecture
+## Benefits of the Multi-User Architecture
 
-1. **Relational Data Model**: Proper foreign key relationships and data integrity
-2. **Improved Query Performance**: Optimized database queries vs. loading everything into memory
-3. **Scalability**: Better handling of larger datasets
-4. **Type Safety**: Prisma provides type checking and validation
-5. **Migration Support**: Structured approach to database schema changes
-6. **Transaction Support**: Atomic operations for data consistency
-7. **Browser Compatibility**: No Prisma code runs in the browser
-8. **Security**: Database operations are isolated to the server
-
-## Refreshing Data in React Context
-
-To ensure imported data appears without requiring a page reload, we've implemented a data refresh pattern:
-
-```javascript
-// PromptContext.jsx
-async function refreshData() {
-  try {
-    const data = await storage.get({
-      'userPrompts': [],
-      'corePrompts': defaultPrompts,
-      'favorites': [],
-      'recentlyUsed': [],
-      'userCategories': [],
-      'settings': { fontSize: 'medium' },
-      'aiResponses': []
-    });
-    
-    setUserPrompts(data.userPrompts);
-    setCorePrompts(data.corePrompts);
-    setFavorites(data.favorites);
-    setRecentlyUsed(data.recentlyUsed);
-    setUserCategories(data.userCategories);
-    setSettings(data.settings);
-    setResponses(data.aiResponses);
-    
-    return true;
-  } catch (error) {
-    console.error('Error refreshing data:', error);
-    return false;
-  }
-}
-```
-
-This function is used after major data operations like imports to ensure the React state reflects the current database state:
-
-```javascript
-// SettingsModal.jsx - Import handling
-if (result.success && (result.newPromptsCount > 0 || result.responsesCount > 0)) {
-  // Apply a loading state while refreshing data
-  showToast('Refreshing data...', 'info');
-  
-  setTimeout(async () => {
-    // Refresh data from the database
-    const refreshSuccess = await refreshData();
-    
-    if (refreshSuccess) {
-      showToast('Data refreshed successfully');
-      onClose();
-    } else {
-      showToast('Error refreshing data. Please reload the page.', 'error');
-    }
-  }, 1000);
-}
-```
-
-This approach replaces the previous method of forcing a page reload after import operations, resulting in a smoother user experience.
+1. **User Isolation**: Proper separation of user data for favorites, recent usage, and settings
+2. **Security**: Modern authentication with JWT and secure cookie handling
+3. **Scalability**: Support for multiple users with proper data isolation
+4. **Administration**: User management capabilities for administrative users
+5. **Flexibility**: Shared content with individualized user experiences
+6. **Migration Path**: Backward compatibility with legacy data structures
 
 ## Future Considerations
 
@@ -408,10 +549,19 @@ This approach replaces the previous method of forcing a page reload after import
 - Performance optimizations for larger datasets
 - Caching strategies for frequently accessed data
 
-### Multi-User Support
-- Authentication and authorization for multi-user environments
-- User-specific settings, favorites, and recent prompts
-- Optimized data refresh patterns for larger datasets
+### Authentication Enhancements
+- OAuth integration for social login
+- Two-factor authentication
+- Email verification
+- Account lockout after failed attempts
+- More granular permission system
+
+### Multi-User Enhancements
+- User groups and team features
+- Sharing prompts between users
+- User activity tracking and analytics
+- User preferences for OpenAI integration
+- User quota management
 
 ### Tag System Enhancements
 - Server-side tag filtering for improved performance with large datasets
