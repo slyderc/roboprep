@@ -52,8 +52,9 @@ The repository is organized into two main sections:
 - **Frontend Framework**: React with Next.js
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
-- **Data Persistence**: localStorage (client-side)
-- **AI Integration**: OpenAI API via Next.js API routes
+- **Data Persistence**: SQLite database with Prisma ORM
+- **API Layer**: Next.js API routes
+- **AI Integration**: OpenAI API integration
 
 ### Key Components
 
@@ -61,42 +62,61 @@ The repository is organized into two main sections:
    - Single-page responsive application with dark/light theme support
    - Individual prompt cards with clean, modern styling
    - Static categories sidebar that remains visible while scrolling
-   - Adapted from the Chrome extension's UI patterns
+   - "FILTER BY TAGS" panel for refining prompt lists
+   - Standardized styling between light and dark themes
    - Attribution links to original creators
 
-2. **Data Management**
-   - Uses localStorage with a wrapper that mimics Chrome's storage API
-   - Maintains the same data structures as the extension with additions for AI responses
+2. **Navigation and Organization**
+   - Smart category organization with prioritized system categories
+   - Tag-based filtering with AND logic (all selected tags must be present)
+   - Visual indicators for active filters and categories
+   - Category list with "All Prompts", "Recently Used", and "Favorites" at the top
+   - Alphabetical sorting for regular categories (numeric prefixes sorted first)
+
+3. **Data Management**
+   - SQLite database with Prisma ORM
+   - API routes for database operations
+   - Storage.js wrapper that maintains compatibility with previous API
    - Support for import/export functionality including OpenAI responses
    - Response history browsing with editing capabilities
 
-3. **OpenAI Integration**
+4. **OpenAI Integration**
    - Direct submission of prompts to OpenAI's API
    - Variable replacement before submitting to AI
    - Response storage and management
    - Response editing with version tracking
    - Multiple-response viewing and history
 
-4. **Theme System**
+5. **Theme System**
    - Light mode (default) and dark mode support
    - Consistent color theming throughout the application
    - Theme preference saved in user settings
+   - CSS variables for responsive sizing and theming
 
 ### Core Files
 
+- `/webpage/prisma/`: Database schema and migrations
+  - `schema.prisma`: Database model definitions
 - `/webpage/src/app/`: Next.js app router pages and layout
   - `/api/openai/`: API route for OpenAI integration
+  - `/api/db/`: API routes for database operations
 - `/webpage/src/components/`: UI components
+  - `CategoryList.jsx`: Category navigation with smart ordering
+  - `PromptList.jsx`: Displays filtered prompts
+  - `TagFilter.jsx`: Tag-based filtering interface
+  - `PromptCard.jsx`: Individual prompt display
   - `ResponseModal.jsx`: Displays OpenAI responses
   - `ResponseHistoryModal.jsx`: Manages saved responses
   - `ResponseListModal.jsx`: Lists all responses for a prompt
 - `/webpage/src/context/`: React Context providers
   - `PromptContext.jsx`: Handles prompt and response management
 - `/webpage/src/lib/`: Utility functions and helpers
+  - `db.js`: Database connection and helper functions
+  - `storage.js`: Database wrapper with localStorage-compatible API
   - `openaiService.js`: OpenAI API integration
   - `apiClient.js`: Client-side API wrapper
-  - `storage.js`: Extended for AI responses
 - `/webpage/src/styles/`: Global CSS and theme definitions
+  - `globals.css`: Contains theme variables and global styles
 
 ## OpenAI Integration
 
@@ -168,14 +188,23 @@ When modifying prompts:
 
 ### UI Components
 
-Both the extension and web app use similar components with shared patterns:
-- `PromptCard.jsx`: Displays individual prompts with OpenAI integration
+The web application uses these key components:
+- `CategoryList.jsx`: Smart category navigation with prioritized ordering
+- `PromptList.jsx`: Main component that displays filtered prompts
+- `TagFilter.jsx`: Interface for filtering prompts by tags with AND logic
+- `PromptCard.jsx`: Displays individual prompts with tag badges and actions
 - `VariableModal.jsx`: Handles variable replacement for copy and AI submission
-- `CategoryList.jsx`: Manages prompt categories in a static sidebar
-- `NewPromptModal.jsx`: UI for creating new prompts
+- `NewPromptModal.jsx`: UI for creating/editing prompts with tag management
 - `ResponseModal.jsx`: Displays and manages OpenAI responses
 - `ResponseHistoryModal.jsx`: Displays saved response history with editing
 - `ResponseListModal.jsx`: Lists all responses for a prompt with variables display
+
+Key design patterns:
+- Consistent styling between light and dark modes
+- Interactive elements with clear visual feedback
+- Responsive layouts that adapt to different screen sizes
+- Semantic component organization following React best practices
+- Shared utility functions for common operations
 
 ### Adding New Features
 
@@ -193,16 +222,32 @@ When adding new features:
    - Theme toggle is available in the header
    - Full theme settings in the settings modal
    - Dark mode colors use CSS variables defined in globals.css
+   - Consistent styling between light and dark themes for all components
 
-2. **Import/Export**:
+2. **Tag and Category Management**:
+   - Tag filtering through the "FILTER BY TAGS" panel
+   - Smart category organization with prioritized categories
+   - Creating new prompts with multiple tags
+   - Editing prompt tags through the edit modal
+   - Tags support AND logic filtering (all selected tags must be present)
+
+3. **Import/Export**:
    - Export functionality saves user prompts and AI responses to a JSON file
    - Import validates the JSON format and checks for duplicates
    - Both are accessible from the Settings modal with options for including responses
+   - Tags and categories are preserved during import/export
 
-3. **OpenAI Integration**:
+4. **Database Operations**:
+   - Data persistence through SQLite with Prisma ORM
+   - API routes for database access
+   - Compatibility layer in storage.js that maintains the same API as localStorage
+   - Many-to-many relationships for tags and prompts
+
+5. **OpenAI Integration**:
    - API key management through environment variables
    - Response storage and editing
    - Error handling and retry logic for rate limits
+   - New response generation without closing the modal
 
 ## Testing
 
@@ -214,10 +259,24 @@ When adding new features:
 
 ### Web Application
 1. Run the development server with `npm run dev`
-2. Test in both light and dark themes
-3. Verify responsive behavior at different screen sizes
-4. Test import/export functionality with and without responses
-5. Verify localStorage persistence
-6. Test OpenAI integration with variable replacement
-7. Test response history browsing and editing
-8. Verify proper error handling for API failures
+2. Database setup:
+   - Verify the SQLite database is initialized with `npx prisma studio`
+   - Check that the default categories and core prompts are loaded
+3. UI and theme testing:
+   - Test in both light and dark themes
+   - Verify consistent styling across all components
+   - Verify responsive behavior at different screen sizes
+4. Feature testing:
+   - Test tag filtering with multiple tag selections (AND logic)
+   - Verify category organization ("All Prompts", "Recently Used", and "Favorites" at top)
+   - Test import/export functionality with and without responses
+   - Verify database persistence of all changes
+5. AI integration:
+   - Test OpenAI integration with variable replacement
+   - Verify "New Response" functionality without closing the modal
+   - Test response history browsing and editing
+   - Verify response deletion functionality
+6. Error handling:
+   - Verify proper error handling for API failures
+   - Test database connection error recovery
+   - Verify graceful handling of missing environment variables

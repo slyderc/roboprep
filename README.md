@@ -17,8 +17,10 @@ When using this code, you must:
 - Store and organize prompts for radio show preparation
 - Create custom prompts using variables for customization
 - Categorize prompts into predefined and custom categories
+- Filter prompts by tags to quickly find relevant content
 - Star/favorite frequently used prompts
 - Track recently used prompts
+- Smart category organization with "All Prompts", "Recently Used", and "Favorites" prioritized
 
 ### OpenAI Integration (Web App)
 - Submit prompts directly to OpenAI's GPT-4o model
@@ -76,6 +78,31 @@ Import prompt packs with duplicate detection:
 - **Data Persistence**: SQLite database via Prisma ORM
 - **AI Integration**: OpenAI API with Next.js API routes
 
+### Category and Tag Organization
+
+#### Smart Category Organization
+The application uses an intelligent category organization system:
+
+- Important categories are prioritized at the top:
+  1. "All Prompts" - displays all available prompts
+  2. "Recently Used" - shows prompts you've recently accessed
+  3. "Favorites" - displays your starred prompts
+- A visual separator divides primary categories from others
+- Remaining categories are sorted intelligently:
+  - Categories starting with numbers are listed first in numerical order (e.g., "1. News", "2. Weather")
+  - Other categories are organized alphabetically
+- Active category is visually highlighted for easy identification
+
+#### Tag Filtering System
+The application includes a tag-based filtering system that allows users to quickly find prompts by their associated tags:
+
+- Filter prompts by selecting one or more tags from the "FILTER BY TAGS" panel
+- Uses AND logic - displays only prompts that contain ALL selected tags
+- Tag filters work alongside category filters for precise content discovery
+- Visual indicators show which tags are currently active
+- Reset button to quickly clear all active tag filters
+- Consistent styling between light and dark themes
+
 ### Project Architecture
 
 #### Application Structure
@@ -97,6 +124,8 @@ Import prompt packs with duplicate detection:
 │   ├── components/
 │   │   ├── ui/                 # Base UI components
 │   │   ├── CategoryList.jsx    # Category navigation
+│   │   ├── PromptList.jsx      # Main prompt listing with filters
+│   │   ├── TagFilter.jsx       # Tag filtering component
 │   │   ├── PromptCard.jsx      # Individual prompt card
 │   │   ├── NewPromptModal.jsx  # Create/edit prompt modal
 │   │   ├── VariableModal.jsx   # Variable replacement modal
@@ -284,6 +313,14 @@ AI responses are stored with the following structure:
   "lastEdited": "2023-05-16T10:15:00Z"   // Timestamp of last edit (if edited)
 }
 ```
+
+## Latest Updates
+
+- **Tag Filtering**: Added ability to filter prompts by tags, using AND logic for multiple tag selection
+- **Smart Category Organization**: Reorganized the categories panel with prioritized essential categories
+- **UI Improvements**: Enhanced styling consistency between light and dark themes
+- **OpenAI Integration**: Improved response handling with ability to generate new responses without closing the modal
+- **Database Migration**: Converted from localStorage to SQLite with Prisma ORM for better data management
 
 ## Development Prerequisites
 

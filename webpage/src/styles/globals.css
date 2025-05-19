@@ -16,6 +16,8 @@
   --text-color: #1f2937;
   --text-muted: #6b7280;
   --border-color: #e5e7eb;
+  --tag-inactive-bg: #e5e7eb;
+  --tag-inactive-text: #6b7280;
   --primary-blue: #2563eb;
 }
 
@@ -26,6 +28,8 @@
   --text-color: #f3f4f6;
   --text-muted: #9ca3af;
   --border-color: #4b5563;
+  --tag-inactive-bg: #3f3f46;
+  --tag-inactive-text: #a1a1aa;
   --primary-blue: #3b82f6;
 }
 
@@ -81,6 +85,24 @@ body {
   color: var(--text-color) !important;
 }
 
+/* General style improvement for count indicator - consistent in both themes */
+.count-indicator {
+  min-width: 1.5rem !important;
+  height: 1.25rem !important;
+  text-align: center !important;
+  font-size: var(--category-count-size) !important;
+  line-height: 1 !important;
+  padding: 0.125rem 0.375rem !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 500 !important;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  background-color: #e5e7eb !important; /* bg-gray-200 in light mode */
+  color: #4b5563 !important; /* text-gray-600 in light mode */
+}
+
 /* Fix for count indicator in dark mode */
 .dark-theme .count-indicator {
   background-color: rgba(255, 255, 255, 0.15) !important;
@@ -88,19 +110,13 @@ body {
   border: 1px solid var(--border-color) !important;
 }
 
-/* General style improvement for count indicator */
-.count-indicator {
-  min-width: 1.5rem;
-  text-align: center;
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
 /* Special styling for category names to prevent truncation */
 .text-category-name {
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  display: block;
-  max-width: calc(100% - 1.75rem); /* Reserve space for the count indicator */
+  letter-spacing: -0.01em !important;
+  line-height: 1.2 !important;
+  display: block !important;
+  font-size: var(--category-name-size) !important;
+  max-width: calc(100% - 1.75rem) !important; /* Reserve space for the count indicator */
 }
 
 .border-gray-100, 
@@ -124,15 +140,108 @@ textarea {
   border-color: var(--border-color);
 }
 
+/* Tag styling for filters - light mode */
+.inactive-tag {
+  background-color: #d1d5db !important; /* Darker gray (bg-gray-300) for more contrast */
+  color: #4b5563 !important; /* Darker text (text-gray-600) for better visibility */
+  border: 1px solid #e5e7eb !important; /* Light border to define edges */
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important; /* Subtle inset shadow */
+}
+
+/* Dark mode tag styling */
+.dark-theme .inactive-tag {
+  background-color: #3f3f46 !important; /* Original dark gray background */
+  color: #a1a1aa !important; /* Original light gray text */
+  border: none !important; /* Remove border in dark mode */
+  box-shadow: none !important; /* Remove shadow in dark mode */
+}
+
+/* Filter tag hover styles - consistent in both modes */
+.filter-tag:hover {
+  background-color: #9ca3af !important; /* hover:bg-gray-400 equivalent */
+  color: #1f2937 !important; /* hover:text-gray-800 equivalent */
+}
+
+.dark-theme .filter-tag:hover {
+  background-color: #4b5563 !important; /* dark hover:bg-gray-600 equivalent */
+  color: #d1d5db !important; /* dark hover:text-gray-300 equivalent */
+}
+
+/* Original tag background in dark mode */
+.dark-theme .bg-blue-100,
+.dark-theme h3.bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.2) !important; /* Original blue background in dark mode */
+}
+
+/* Prompt title styling */
+.text-prompt-title {
+  text-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.dark-theme .text-prompt-title {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  font-weight: 600; /* Match font-semibold from category selection */
+  color: #60a5fa !important; /* Same as active category text color */
+  background-color: rgba(59, 130, 246, 0.2) !important; /* Same as active category bg */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.3) !important; /* Enhanced shadow for dark mode */
+}
+
 /* Apply theme to buttons and active states */
 button.bg-blue-100,
-div.bg-blue-100 {
+div.bg-blue-100,
+span.bg-blue-100 {
   background-color: rgba(59, 130, 246, 0.1) !important;
 }
 
+/* Theme-aware tag styling */
+.theme-aware-tag {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  font-size: var(--prompt-tag-size) !important; /* Ensure consistent font size */
+  padding: 0.125rem 0.375rem !important; /* Enforce consistent padding (py-0.5 px-1.5) */
+  border-radius: 9999px !important; /* Enforce rounded-full */
+  display: inline-flex !important; /* Better text alignment */
+  align-items: center !important; /* Vertical centering */
+  justify-content: center !important; /* Horizontal centering */
+  line-height: 1.1 !important; /* Tighter line height */
+  min-height: 1.375rem !important; /* Consistent height */
+  cursor: pointer !important; /* Always show pointer cursor */
+}
+
+/* Hover states for tag buttons */
+.theme-aware-tag.hover\:bg-blue-200:hover {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark-theme .theme-aware-tag.hover\:bg-blue-200:hover {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Blue tag text in dark mode */
+.dark-theme .text-blue-800 {
+  color: #60a5fa !important; /* Original light blue for dark mode readability */
+}
+
+/* Category item styling - consistent in both light and dark mode */
+.category-item {
+  height: 2.25rem !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Active category styling - light mode */
+.active-category {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
 /* Active category in dark mode */
-.dark-theme div.bg-blue-100 {
+.dark-theme div.bg-blue-100,
+.dark-theme .active-category {
   background-color: rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* Active category text in dark mode */
@@ -145,10 +254,17 @@ div.bg-blue-100 {
   color: var(--text-color) !important;
 }
 
-/* Category title heading */
-.dark-theme .category-heading {
-  color: #a1a1aa !important; /* Brighter color for CATEGORIES heading */
+/* Category title heading - consistent in both themes */
+.category-heading {
+  font-size: var(--category-name-size) !important;
   font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.2 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.dark-theme .category-heading {
+  color: #a1a1aa !important; /* Brighter color for CATEGORIES heading in dark mode */
 }
 
 /* Hover state for categories in dark mode */
@@ -210,6 +326,52 @@ div.bg-blue-100 {
 /* Clickable Prompt Styles */
 .clickable-prompt {
   @apply cursor-pointer;
+}
+
+/* Categories panel styling */
+.categories-panel {
+  transition: background-color 0.3s ease !important;
+}
+
+.category-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
+}
+
+/* Tag Filter styling - ensure consistency between themes */
+.tag-filter-panel {
+  transition: background-color 0.3s ease, border-color 0.3s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  padding: 0.75rem !important;
+}
+
+.tag-filter-heading {
+  font-size: var(--category-name-size) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.2 !important;
+}
+
+.dark-theme .tag-filter-heading {
+  color: #a1a1aa !important; /* Match category heading in dark mode */
+}
+
+.reset-button {
+  height: 1.5rem !important;
+  font-size: 0.7rem !important;
+  line-height: 1 !important;
+  padding: 0.125rem 0.5rem !important;
+  border-radius: 0.25rem !important;
+  transition: opacity 0.2s ease, background-color 0.2s ease !important;
+}
+
+.tag-container {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.375rem !important; /* Consistent spacing between tags */
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.25rem !important;
 }
 
 /* Apply max width for better readability */

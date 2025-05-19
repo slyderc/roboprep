@@ -132,6 +132,49 @@ model Setting {
 
 ## Implementation Details
 
+### Tag Filtering Implementation
+
+The database schema supports tag-based filtering through a many-to-many relationship:
+
+1. **Database Structure**:
+   - Tags are stored in a separate `Tag` table with unique tag names
+   - The `PromptTag` junction table manages many-to-many relationships between prompts and tags
+   - This allows prompts to have multiple tags and tags to be associated with multiple prompts
+
+2. **Tag Data Flow**:
+   - When creating or updating prompts, tags are extracted and stored:
+     - Existing tags are reused to prevent duplication
+     - New tags are created when needed
+     - Prompt-tag relationships are stored in the junction table
+   - When retrieving prompts, tags are included with each prompt using Prisma's relation queries
+   - Tag data is transformed from database format to a simple string array for frontend use
+
+3. **Tag Filtering Logic**:
+   - Tag filtering is implemented client-side after data is retrieved from the database
+   - The UI filters prompts to only show those with ALL selected tags (AND logic)
+   - This provides a powerful refinement mechanism when combined with category filtering
+
+### Category Organization
+
+Categories in the database support both system-defined and user-created categories:
+
+1. **Database Structure**:
+   - Categories are stored in the `Category` table with a unique ID and name
+   - The `isUserCreated` flag distinguishes between system and user categories
+   - Each prompt references a single category through the `categoryId` field
+
+2. **Special Categories**:
+   - "All Prompts", "Recently Used", and "Favorites" are virtual categories handled by the application logic
+   - These don't exist as database records but are generated from database queries:
+     - "All Prompts" - Shows all prompts regardless of category
+     - "Recently Used" - Generated from the `RecentlyUsed` table
+     - "Favorites" - Generated from the `Favorite` table
+
+3. **Category Organization**:
+   - Category order is managed through client-side logic
+   - The application loads categories from the database and then applies sorting rules
+   - Categories starting with numbers are sorted numerically, then remaining categories alphabetically
+
 ### Client-Server Architecture
 
 The database implementation follows a client-server architecture:
@@ -358,10 +401,30 @@ This approach replaces the previous method of forcing a page reload after import
 
 ## Future Considerations
 
-- Database backups
+### Database Management
+- Database backups and restoration functionality
 - More advanced migration strategies for schema changes
 - Potential cloud database support
 - Performance optimizations for larger datasets
 - Caching strategies for frequently accessed data
-- Authentication and authorization for multi-user support
+
+### Multi-User Support
+- Authentication and authorization for multi-user environments
+- User-specific settings, favorites, and recent prompts
 - Optimized data refresh patterns for larger datasets
+
+### Tag System Enhancements
+- Server-side tag filtering for improved performance with large datasets
+- Tag analytics to show most commonly used tags
+- Tag suggestion system based on prompt content analysis
+- Advanced filtering options:
+  - Support for OR logic (show prompts with ANY selected tag)
+  - Exclusion filtering (hide prompts with specific tags)
+  - Filter persistence across sessions
+  - Tag category grouping or hierarchical tags
+
+### Category Improvements
+- Custom category ordering (drag-and-drop reordering)
+- Category color coding or icons
+- Nested subcategories for more organizational flexibility
+- Category-based permission system for multi-user environments
