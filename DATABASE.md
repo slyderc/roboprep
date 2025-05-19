@@ -298,6 +298,64 @@ The database includes version tracking to manage future schema changes:
 7. **Browser Compatibility**: No Prisma code runs in the browser
 8. **Security**: Database operations are isolated to the server
 
+## Refreshing Data in React Context
+
+To ensure imported data appears without requiring a page reload, we've implemented a data refresh pattern:
+
+```javascript
+// PromptContext.jsx
+async function refreshData() {
+  try {
+    const data = await storage.get({
+      'userPrompts': [],
+      'corePrompts': defaultPrompts,
+      'favorites': [],
+      'recentlyUsed': [],
+      'userCategories': [],
+      'settings': { fontSize: 'medium' },
+      'aiResponses': []
+    });
+    
+    setUserPrompts(data.userPrompts);
+    setCorePrompts(data.corePrompts);
+    setFavorites(data.favorites);
+    setRecentlyUsed(data.recentlyUsed);
+    setUserCategories(data.userCategories);
+    setSettings(data.settings);
+    setResponses(data.aiResponses);
+    
+    return true;
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    return false;
+  }
+}
+```
+
+This function is used after major data operations like imports to ensure the React state reflects the current database state:
+
+```javascript
+// SettingsModal.jsx - Import handling
+if (result.success && (result.newPromptsCount > 0 || result.responsesCount > 0)) {
+  // Apply a loading state while refreshing data
+  showToast('Refreshing data...', 'info');
+  
+  setTimeout(async () => {
+    // Refresh data from the database
+    const refreshSuccess = await refreshData();
+    
+    if (refreshSuccess) {
+      showToast('Data refreshed successfully');
+      onClose();
+    } else {
+      showToast('Error refreshing data. Please reload the page.', 'error');
+    }
+  }, 1000);
+}
+```
+
+This approach replaces the previous method of forcing a page reload after import operations, resulting in a smoother user experience.
+
 ## Future Considerations
 
 - Database backups
@@ -306,3 +364,4 @@ The database includes version tracking to manage future schema changes:
 - Performance optimizations for larger datasets
 - Caching strategies for frequently accessed data
 - Authentication and authorization for multi-user support
+- Optimized data refresh patterns for larger datasets
