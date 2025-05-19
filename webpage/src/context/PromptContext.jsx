@@ -38,24 +38,83 @@ export function PromptProvider({ children }) {
   // Initialize storage
   useEffect(() => {
     async function initializeStorage() {
-      const data = await storage.get({
-        'userPrompts': [],
-        'corePrompts': defaultPrompts,
-        'favorites': [],
-        'recentlyUsed': [],
-        'userCategories': [],
-        'settings': { fontSize: 'medium' },
-        'aiResponses': [] // Add this line
-      });
+      console.log('Initializing PromptContext storage...');
       
-      setUserPrompts(data.userPrompts);
-      setCorePrompts(data.corePrompts);
-      setFavorites(data.favorites);
-      setRecentlyUsed(data.recentlyUsed);
-      setUserCategories(data.userCategories);
-      setSettings(data.settings);
-      setResponses(data.aiResponses); // Add this line
-      setInitialized(true);
+      try {
+        // First, fetch data from storage
+        const data = await storage.get({
+          'userPrompts': [],
+          'corePrompts': defaultPrompts,
+          'favorites': [],
+          'recentlyUsed': [],
+          'userCategories': [],
+          'settings': { fontSize: 'medium' },
+          'aiResponses': []
+        });
+        
+        console.log(`Fetched data: ${data.corePrompts.length} core prompts, ${data.userPrompts.length} user prompts`);
+        
+        // Check if we need to initialize the database
+        if (data.corePrompts.length === 0 && Array.isArray(defaultPrompts) && defaultPrompts.length > 0) {
+          console.log('No core prompts found. Triggering database initialization...');
+          
+          // Trigger database initialization via API
+          try {
+            const initResponse = await fetch('/api/init');
+            if (initResponse.ok) {
+              console.log('Database initialization triggered. Fetching data again...');
+              
+              // Fetch data again after initialization
+              const refreshedData = await storage.get({
+                'userPrompts': [],
+                'corePrompts': defaultPrompts,
+                'favorites': [],
+                'recentlyUsed': [],
+                'userCategories': [],
+                'settings': { fontSize: 'medium' },
+                'aiResponses': []
+              });
+              
+              console.log(`Refreshed data: ${refreshedData.corePrompts.length} core prompts, ${refreshedData.userPrompts.length} user prompts`);
+              
+              // Use the refreshed data
+              setUserPrompts(refreshedData.userPrompts);
+              setCorePrompts(refreshedData.corePrompts.length > 0 ? refreshedData.corePrompts : defaultPrompts);
+              setFavorites(refreshedData.favorites);
+              setRecentlyUsed(refreshedData.recentlyUsed);
+              setUserCategories(refreshedData.userCategories);
+              setSettings(refreshedData.settings);
+              setResponses(refreshedData.aiResponses);
+              setInitialized(true);
+              return;
+            }
+          } catch (initError) {
+            console.error('Database initialization failed:', initError);
+          }
+        }
+        
+        // Use the fetched data
+        setUserPrompts(data.userPrompts);
+        setCorePrompts(data.corePrompts.length > 0 ? data.corePrompts : defaultPrompts);
+        setFavorites(data.favorites);
+        setRecentlyUsed(data.recentlyUsed);
+        setUserCategories(data.userCategories);
+        setSettings(data.settings);
+        setResponses(data.aiResponses);
+        setInitialized(true);
+      } catch (error) {
+        console.error('Error initializing storage:', error);
+        
+        // Fall back to defaults
+        setUserPrompts([]);
+        setCorePrompts(defaultPrompts);
+        setFavorites([]);
+        setRecentlyUsed([]);
+        setUserCategories([]);
+        setSettings({ fontSize: 'medium' });
+        setResponses([]);
+        setInitialized(true);
+      }
     }
     
     initializeStorage();
