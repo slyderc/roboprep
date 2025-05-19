@@ -20,9 +20,22 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
  */
 export async function initializeDatabase() {
   try {
-    // Check if database file exists
-    const dbFilePath = process.env.DATABASE_URL?.replace('file:', '') || './prisma/dev.db';
-    const dbFileExists = fs.existsSync(dbFilePath);
+    // Check if the tables exist by checking for DatabaseInfo table
+    let tablesExist = false;
+    try {
+      // This will throw an error if the table doesn't exist
+      await prisma.$queryRaw`SELECT 1 FROM DatabaseInfo LIMIT 1`;
+      tablesExist = true;
+    } catch (e) {
+      console.log('Database tables do not exist yet. Will create them.');
+      // Tables don't exist, we'll handle this below
+    }
+    
+    // If tables don't exist, we can't continue until migrations are run
+    if (!tablesExist) {
+      console.log('Please run: npx prisma migrate dev --name init');
+      return false;
+    }
     
     // Check if the DatabaseInfo record exists
     const dbInfo = await prisma.databaseInfo.findUnique({
