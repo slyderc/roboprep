@@ -93,7 +93,6 @@ async function handleGetSetting({ key }) {
 
 // Multiple settings retrieval
 async function handleGetSettings({ keys }) {
-  console.log('handleGetSettings called with keys:', keys);
   
   const result = {};
   
@@ -103,7 +102,6 @@ async function handleGetSettings({ keys }) {
       where: { key: { in: keys } }
     });
     
-    console.log(`Found ${settings.length} settings in database`);
     
     // Create a map for quick lookups
     const settingsMap = new Map(
@@ -117,7 +115,6 @@ async function handleGetSettings({ keys }) {
   } else if (typeof keys === 'object') {
     // Object with default values
     const settingKeys = Object.keys(keys);
-    console.log('Getting settings for keys:', settingKeys);
     
     // If userPrompts is in the keys, also fetch all user prompts
     if (settingKeys.includes('userPrompts')) {
@@ -132,7 +129,6 @@ async function handleGetSettings({ keys }) {
         }
       });
       
-      console.log(`Found ${userPrompts.length} user prompts in database`);
       result.userPrompts = userPrompts.map(formatPromptFromDb);
     }
     
@@ -149,7 +145,6 @@ async function handleGetSettings({ keys }) {
         }
       });
       
-      console.log(`Found ${corePrompts.length} core prompts in database`);
       result.corePrompts = corePrompts.map(formatPromptFromDb);
     }
     
@@ -175,7 +170,6 @@ async function handleGetSettings({ keys }) {
     }
   }
   
-  console.log('Final result from handleGetSettings:', result);
   return NextResponse.json(result);
 }
 
@@ -218,7 +212,6 @@ async function handleGetUserPrompts() {
     }
   });
   
-  console.log(`Found ${prompts.length} user prompts in database`);
   const formattedPrompts = prompts.map(formatPromptFromDb);
   
   return NextResponse.json(formattedPrompts);
@@ -242,8 +235,16 @@ async function handleGetCorePrompts() {
 
 // Get favorites
 async function handleGetFavorites() {
-  const favorites = await prisma.favorite.findMany();
-  return NextResponse.json(favorites.map(f => f.promptId));
+  try {
+    console.log('Fetching favorites from database');
+    const favorites = await prisma.favorite.findMany();
+    const favoriteIds = favorites.map(f => f.promptId);
+    console.log(`Found ${favoriteIds.length} favorites in database`);
+    return NextResponse.json(favoriteIds);
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    return NextResponse.json([]);
+  }
 }
 
 // Get recently used
@@ -373,7 +374,6 @@ async function storePrompts(prompts, isUserCreated) {
 
 // Add prompts helper (appending to existing)
 async function addPrompts(prompts, isUserCreated) {
-  console.log(`addPrompts - Processing ${prompts.length} prompts (userCreated: ${isUserCreated})`);
   let added = 0;
   let skipped = 0;
   
@@ -386,7 +386,6 @@ async function addPrompts(prompts, isUserCreated) {
     
     // Skip if already exists
     if (existingPrompt) {
-      console.log(`Skipping existing prompt with ID: ${prompt.id}`);
       skipped++;
       continue;
     }
@@ -395,7 +394,6 @@ async function addPrompts(prompts, isUserCreated) {
     added++;
   }
   
-  console.log(`addPrompts - Added: ${added}, Skipped: ${skipped}`);
   return true;
 }
 
@@ -420,7 +418,6 @@ async function createPromptWithTags(prompt, isUserCreated) {
   
   // Create prompt
   try {
-    console.log(`Creating prompt: ${prompt.title} (ID: ${prompt.id}, Category: ${prompt.category})`);
     await prisma.prompt.create({
       data: promptData
     });
@@ -456,24 +453,47 @@ async function createPromptWithTags(prompt, isUserCreated) {
 
 // Store favorites
 async function handleStoreFavorites({ favorites }) {
-  // Delete existing favorites
-  await prisma.favorite.deleteMany({});
+  console.log(`Storing ${favorites.length} favorites to database`);
   
-  // Create new favorites
-  for (const promptId of favorites) {
-    // Check if prompt exists
-    const promptExists = await prisma.prompt.findUnique({
-      where: { id: promptId }
+  try {
+    // Start a transaction to ensure data consistency
+    await prisma.$transaction(async (tx) => {
+      // Delete existing favorites
+      await tx.favorite.deleteMany({});
+      
+      // Create new favorites
+      for (const promptId of favorites) {
+        // Check if prompt exists
+        const promptExists = await tx.prompt.findUnique({
+          where: { id: promptId }
+        });
+        
+        if (promptExists) {
+          await tx.favorite.create({
+            data: { promptId }
+          });
+        } else {
+          console.warn(`Skipping favorite for non-existent prompt: ${promptId}`);
+        }
+      }
     });
     
-    if (promptExists) {
-      await prisma.favorite.create({
-        data: { promptId }
-      });
-    }
+    // Verify the operation by fetching the updated favorites
+    const updatedFavorites = await prisma.favorite.findMany();
+    console.log(`Successfully stored ${updatedFavorites.length} favorites to database`);
+    
+    return NextResponse.json({ 
+      success: true, 
+      count: updatedFavorites.length,
+      favorites: updatedFavorites.map(f => f.promptId)
+    });
+  } catch (error) {
+    console.error('Error storing favorites:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
-  
-  return NextResponse.json({ success: true });
 }
 
 // Store recently used

@@ -125,13 +125,13 @@ export function HomePage() {
         response={aiResponse}
         loading={isLoading}
         error={responseError}
-        onNewResponse={async (prompt) => {
-          // Generate a new response with the same prompt
+        onNewResponse={async (prompt, variables) => {
+          // Generate a new response with the same prompt and variables
           setIsLoading(true);
           setResponseError(null);
           
           try {
-            const result = await submitPromptToAi(prompt);
+            const result = await submitPromptToAi(prompt, variables);
             setAiResponse(result);
           } catch (error) {
             console.error('Error submitting to AI:', error);
