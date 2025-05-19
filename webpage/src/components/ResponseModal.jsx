@@ -14,8 +14,8 @@ import { usePrompts } from '../context/PromptContext';
  * @param {Object} props.error - Any error from the API
  * @returns {JSX.Element} The ResponseModal component
  */
-export function ResponseModal({ isOpen, onClose, promptData, response, loading, error }) {
-  const { saveResponse } = usePrompts();
+export function ResponseModal({ isOpen, onClose, promptData, response, loading, error, onNewResponse }) {
+  const { saveResponse, submitPromptToAi } = usePrompts();
   const [saved, setSaved] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -51,6 +51,24 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
     setIsEditing(false);
     setHasEdits(false);
     onClose();
+  };
+  
+  // Handle new response request
+  const handleNewResponse = () => {
+    if (promptData) {
+      // If onNewResponse prop was provided, use it
+      if (typeof onNewResponse === 'function') {
+        onNewResponse(promptData);
+      } else {
+        // Otherwise, close this modal so the user can generate a new response
+        handleClose();
+        
+        // Use setTimeout to allow modal to close before showing any alert
+        setTimeout(() => {
+          alert('To generate a new response, click the "Submit to AI" button on the prompt card.');
+        }, 300);
+      }
+    }
   };
   
   // Initialize edited text when response changes
@@ -228,6 +246,18 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
                       }
                     >
                       {copySuccess ? 'Copied!' : 'Copy'}
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleNewResponse}
+                      variant="secondary"
+                      icon={
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      }
+                    >
+                      New Response
                     </Button>
                     
                     <Button 

@@ -125,6 +125,15 @@ export function HomePage() {
         response={aiResponse}
         loading={isLoading}
         error={responseError}
+        onNewResponse={(prompt) => {
+          // Close the current response modal
+          setResponseModalOpen(false);
+          
+          // Wait for modal to close, then trigger a new AI request
+          setTimeout(() => {
+            handleSubmitToAi(prompt);
+          }, 300);
+        }}
       />
       
       <ResponseListModal
