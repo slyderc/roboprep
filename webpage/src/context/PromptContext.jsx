@@ -420,6 +420,8 @@ export function PromptProvider({ children }) {
         'aiResponses': []
       });
       
+      console.log('Refreshed data from database:', data);
+      
       setUserPrompts(data.userPrompts);
       setCorePrompts(data.corePrompts);
       setFavorites(data.favorites);

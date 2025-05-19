@@ -26,19 +26,24 @@ const storage = {
    */
   get: async (keys) => {
     try {
+      console.log('storage.get called with keys:', keys);
+      
       // Handle single string key
       if (typeof keys === 'string') {
         const data = await dbRequest('getSetting', { key: keys });
+        console.log(`Fetched data for key '${keys}':`, data);
         return data;
       } 
       // Handle array of keys
       else if (Array.isArray(keys)) {
         const data = await dbRequest('getSettings', { keys });
+        console.log('Fetched data for keys array:', data);
         return data;
       } 
       // Handle object with default values
       else {
         const data = await dbRequest('getSettings', { keys });
+        console.log('Fetched data for keys object:', data);
         return data;
       }
     } catch (error) {
@@ -54,6 +59,7 @@ const storage = {
         Object.keys(keys).forEach(key => result[key] = keys[key]);
       }
       
+      console.log('Returning default values due to error:', result);
       return result;
     }
   },

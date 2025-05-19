@@ -93,6 +93,8 @@ async function handleGetSetting({ key }) {
 
 // Multiple settings retrieval
 async function handleGetSettings({ keys }) {
+  console.log('handleGetSettings called with keys:', keys);
+  
   const result = {};
   
   if (Array.isArray(keys)) {
@@ -100,6 +102,8 @@ async function handleGetSettings({ keys }) {
     const settings = await prisma.setting.findMany({
       where: { key: { in: keys } }
     });
+    
+    console.log(`Found ${settings.length} settings in database`);
     
     // Create a map for quick lookups
     const settingsMap = new Map(
@@ -113,21 +117,65 @@ async function handleGetSettings({ keys }) {
   } else if (typeof keys === 'object') {
     // Object with default values
     const settingKeys = Object.keys(keys);
-    const settings = await prisma.setting.findMany({
-      where: { key: { in: settingKeys } }
-    });
+    console.log('Getting settings for keys:', settingKeys);
     
-    // Create a map for quick lookups
-    const settingsMap = new Map(
-      settings.map(s => [s.key, JSON.parse(s.value)])
+    // If userPrompts is in the keys, also fetch all user prompts
+    if (settingKeys.includes('userPrompts')) {
+      const userPrompts = await prisma.prompt.findMany({
+        where: { isUserCreated: true },
+        include: {
+          tags: {
+            include: {
+              tag: true
+            }
+          }
+        }
+      });
+      
+      console.log(`Found ${userPrompts.length} user prompts in database`);
+      result.userPrompts = userPrompts.map(formatPromptFromDb);
+    }
+    
+    // If corePrompts is in the keys, also fetch all core prompts
+    if (settingKeys.includes('corePrompts')) {
+      const corePrompts = await prisma.prompt.findMany({
+        where: { isUserCreated: false },
+        include: {
+          tags: {
+            include: {
+              tag: true
+            }
+          }
+        }
+      });
+      
+      console.log(`Found ${corePrompts.length} core prompts in database`);
+      result.corePrompts = corePrompts.map(formatPromptFromDb);
+    }
+    
+    // Get other settings
+    const filteredKeys = settingKeys.filter(k => 
+      !['userPrompts', 'corePrompts'].includes(k)
     );
     
-    // Set values or defaults in result
-    settingKeys.forEach(key => {
-      result[key] = settingsMap.has(key) ? settingsMap.get(key) : keys[key];
-    });
+    if (filteredKeys.length > 0) {
+      const settings = await prisma.setting.findMany({
+        where: { key: { in: filteredKeys } }
+      });
+      
+      // Create a map for quick lookups
+      const settingsMap = new Map(
+        settings.map(s => [s.key, JSON.parse(s.value)])
+      );
+      
+      // Set values or defaults in result
+      filteredKeys.forEach(key => {
+        result[key] = settingsMap.has(key) ? settingsMap.get(key) : keys[key];
+      });
+    }
   }
   
+  console.log('Final result from handleGetSettings:', result);
   return NextResponse.json(result);
 }
 
@@ -157,6 +205,8 @@ async function handleRemoveSetting({ key }) {
 
 // Get user prompts
 async function handleGetUserPrompts() {
+  console.log('handleGetUserPrompts called');
+  
   const prompts = await prisma.prompt.findMany({
     where: { isUserCreated: true },
     include: {
@@ -168,7 +218,10 @@ async function handleGetUserPrompts() {
     }
   });
   
-  return NextResponse.json(prompts.map(formatPromptFromDb));
+  console.log(`Found ${prompts.length} user prompts in database`);
+  const formattedPrompts = prompts.map(formatPromptFromDb);
+  
+  return NextResponse.json(formattedPrompts);
 }
 
 // Get core prompts
@@ -298,6 +351,7 @@ async function handleStoreCorePrompts({ prompts }) {
 
 // Add user prompts (appending to existing)
 async function handleAddUserPrompts({ prompts }) {
+  console.log('handleAddUserPrompts - Adding prompts:', prompts.length);
   await addPrompts(prompts, true);
   return NextResponse.json({ success: true });
 }
@@ -319,6 +373,10 @@ async function storePrompts(prompts, isUserCreated) {
 
 // Add prompts helper (appending to existing)
 async function addPrompts(prompts, isUserCreated) {
+  console.log(`addPrompts - Processing ${prompts.length} prompts (userCreated: ${isUserCreated})`);
+  let added = 0;
+  let skipped = 0;
+  
   // Create new prompts with their tags
   for (const prompt of prompts) {
     // Check if prompt already exists
@@ -328,12 +386,16 @@ async function addPrompts(prompts, isUserCreated) {
     
     // Skip if already exists
     if (existingPrompt) {
+      console.log(`Skipping existing prompt with ID: ${prompt.id}`);
+      skipped++;
       continue;
     }
     
     await createPromptWithTags(prompt, isUserCreated);
+    added++;
   }
   
+  console.log(`addPrompts - Added: ${added}, Skipped: ${skipped}`);
   return true;
 }
 
@@ -358,10 +420,11 @@ async function createPromptWithTags(prompt, isUserCreated) {
   
   // Create prompt
   try {
+    console.log(`Creating prompt: ${prompt.title} (ID: ${prompt.id}, Category: ${prompt.category})`);
     await prisma.prompt.create({
       data: promptData
     });
-  
+    
     // Create tags if needed and connect to prompt
     for (const tagName of tags) {
       // Find or create tag
@@ -386,7 +449,7 @@ async function createPromptWithTags(prompt, isUserCreated) {
     
     return true;
   } catch (error) {
-    console.error('Error creating prompt:', error);
+    console.error(`Error creating prompt ${prompt.title}:`, error);
     return false;
   }
 }
