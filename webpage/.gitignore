@@ -28,6 +28,15 @@ yarn-error.log*
 .env*.local
 .env
 
+# database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+prisma/dev.db
+prisma/dev.db-journal
+
 # OpenAI API keys and configuration
 .openai-credentials
 *.openai-key
