@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google';
 import '../styles/globals.css';
+import { initializeDatabase } from '../lib/db';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -7,6 +8,11 @@ export const metadata = {
   title: 'Robo Show Prep',
   description: 'AI-powered show prep for radio DJs',
 };
+
+// Initialize the database on server-side
+initializeDatabase().catch(error => {
+  console.error('Database initialization failed in layout:', error);
+});
 
 export default function RootLayout({ children }) {
   return (

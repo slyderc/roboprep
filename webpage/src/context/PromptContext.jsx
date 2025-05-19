@@ -38,24 +38,82 @@ export function PromptProvider({ children }) {
   // Initialize storage
   useEffect(() => {
     async function initializeStorage() {
-      const data = await storage.get({
-        'userPrompts': [],
-        'corePrompts': defaultPrompts,
-        'favorites': [],
-        'recentlyUsed': [],
-        'userCategories': [],
-        'settings': { fontSize: 'medium' },
-        'aiResponses': [] // Add this line
-      });
       
-      setUserPrompts(data.userPrompts);
-      setCorePrompts(data.corePrompts);
-      setFavorites(data.favorites);
-      setRecentlyUsed(data.recentlyUsed);
-      setUserCategories(data.userCategories);
-      setSettings(data.settings);
-      setResponses(data.aiResponses); // Add this line
-      setInitialized(true);
+      try {
+        // First, fetch main data from storage
+        const data = await storage.get({
+          'userPrompts': [],
+          'corePrompts': defaultPrompts,
+          'favorites': [],
+          'recentlyUsed': [],
+          'userCategories': [],
+          'settings': { fontSize: 'medium' }
+        });
+        
+        
+        // Fetch responses separately
+        const responseData = await storage.getResponses();
+        
+        // Check if we need to initialize the database
+        if (data.corePrompts.length === 0 && Array.isArray(defaultPrompts) && defaultPrompts.length > 0) {
+          
+          // Trigger database initialization via API
+          try {
+            const initResponse = await fetch('/api/init');
+            if (initResponse.ok) {
+              
+              // Fetch data again after initialization
+              const refreshedData = await storage.get({
+                'userPrompts': [],
+                'corePrompts': defaultPrompts,
+                'favorites': [],
+                'recentlyUsed': [],
+                'userCategories': [],
+                'settings': { fontSize: 'medium' }
+              });
+              
+              // Fetch responses separately
+              const refreshedResponses = await storage.getResponses();
+              
+              
+              // Use the refreshed data
+              setUserPrompts(refreshedData.userPrompts);
+              setCorePrompts(refreshedData.corePrompts.length > 0 ? refreshedData.corePrompts : defaultPrompts);
+              setFavorites(Array.isArray(refreshedData.favorites) ? refreshedData.favorites : []);
+              setRecentlyUsed(Array.isArray(refreshedData.recentlyUsed) ? refreshedData.recentlyUsed : []);
+              setUserCategories(refreshedData.userCategories);
+              setSettings(refreshedData.settings);
+              setResponses(refreshedResponses);
+              setInitialized(true);
+              return;
+            }
+          } catch (initError) {
+            console.error('Database initialization failed:', initError);
+          }
+        }
+        
+        // Use the fetched data
+        setUserPrompts(data.userPrompts);
+        setCorePrompts(data.corePrompts.length > 0 ? data.corePrompts : defaultPrompts);
+        setFavorites(Array.isArray(data.favorites) ? data.favorites : []);
+        setRecentlyUsed(Array.isArray(data.recentlyUsed) ? data.recentlyUsed : []);
+        setUserCategories(data.userCategories);
+        setSettings(data.settings);
+        setResponses(responseData);
+        setInitialized(true);
+      } catch (error) {
+        console.error('Error initializing storage:', error);
+        
+        // Fall back to defaults
+        setUserPrompts([]);
+        setCorePrompts(defaultPrompts);
+        setFavorites([]);
+        setRecentlyUsed([]);
+        setUserCategories([]);
+        setSettings({ fontSize: 'medium' });
+        setResponses([]);
+        setInitialized(true);
+      }
     }
     
     initializeStorage();
@@ -168,14 +226,31 @@ export function PromptProvider({ children }) {
   }
   
   async function toggleFavorite(promptId) {
-    const updatedFavorites = favorites.includes(promptId)
-      ? favorites.filter(id => id !== promptId)
-      : [...favorites, promptId];
-    
-    setFavorites(updatedFavorites);
-    await storage.set({ favorites: updatedFavorites });
-    
-    return updatedFavorites.includes(promptId);
+    try {
+      // Make sure the prompt exists before toggling favorite
+      const promptExists = await storage.promptExists(promptId);
+      if (!promptExists) {
+        console.error(`Cannot toggle favorite: Prompt with ID ${promptId} does not exist`);
+        return false;
+      }
+
+      const updatedFavorites = favorites.includes(promptId)
+        ? favorites.filter(id => id !== promptId)
+        : [...favorites, promptId];
+      
+      // Update the local state
+      setFavorites(updatedFavorites);
+      
+      // Persist to the database
+      await storage.set({ favorites: updatedFavorites });
+      
+      console.log(`Favorites updated. Total: ${updatedFavorites.length}`);
+      return updatedFavorites.includes(promptId);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      // Revert the local state change if the database operation failed
+      return favorites.includes(promptId);
+    }
   }
   
   async function addToRecentlyUsed(promptId) {
@@ -328,27 +403,44 @@ export function PromptProvider({ children }) {
       throw new Error('Response must have a promptId');
     }
     
+    // Prepare the response object with required fields
     const newResponse = {
       ...response,
       id: `response_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       createdAt: new Date().toISOString()
     };
     
-    const updatedResponses = [...responses, newResponse];
-    setResponses(updatedResponses);
-    await storage.set({ 'aiResponses': updatedResponses });
-    return newResponse;
+    try {
+      // Use the direct saveResponse API endpoint
+      const savedResponse = await storage.saveResponse(newResponse);
+      
+      // Update the local state
+      const updatedResponses = [...responses, savedResponse];
+      setResponses(updatedResponses);
+      
+      return savedResponse;
+    } catch (error) {
+      console.error('Error saving response:', error);
+      throw error;
+    }
   }
   
   async function deleteResponse(responseId) {
-    const updatedResponses = responses.filter(r => r.id !== responseId);
-    
-    if (updatedResponses.length < responses.length) {
-      setResponses(updatedResponses);
-      await storage.set({ 'aiResponses': updatedResponses });
-      return true;
+    try {
+      // Use the direct deleteResponse API endpoint
+      const result = await storage.deleteResponse(responseId);
+      
+      if (result) {
+        // Update the local state only after successful deletion
+        const updatedResponses = responses.filter(r => r.id !== responseId);
+        setResponses(updatedResponses);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error deleting response:', error);
+      return false;
     }
-    return false;
   }
   
   async function updateResponse(updatedResponse) {
@@ -357,25 +449,28 @@ export function PromptProvider({ children }) {
       throw new Error('Response must have an ID to update');
     }
     
-    // Find the index of the response to update
-    const responseIndex = responses.findIndex(r => r.id === updatedResponse.id);
-    
-    if (responseIndex === -1) {
-      throw new Error('Response not found');
+    try {
+      // Add lastEdited timestamp
+      const responseToUpdate = {
+        ...updatedResponse,
+        lastEdited: new Date().toISOString()
+      };
+      
+      // Save the updated response using the direct API
+      const savedResponse = await storage.saveResponse(responseToUpdate);
+      
+      // Update the local state
+      const updatedResponses = responses.map(r => 
+        r.id === savedResponse.id ? savedResponse : r
+      );
+      
+      setResponses(updatedResponses);
+      
+      return savedResponse;
+    } catch (error) {
+      console.error('Error updating response:', error);
+      throw error;
     }
-    
-    // Create updated array with the modified response
-    const updatedResponses = [...responses];
-    updatedResponses[responseIndex] = {
-      ...updatedResponse,
-      lastEdited: new Date().toISOString() 
-    };
-    
-    // Update state and storage
-    setResponses(updatedResponses);
-    await storage.set({ 'aiResponses': updatedResponses });
-    
-    return updatedResponse;
   }
   
   function getResponsesForPrompt(promptId) {
@@ -407,6 +502,44 @@ export function PromptProvider({ children }) {
     }
   }
   
+  // Function to refresh all data from the database
+  async function refreshData() {
+    try {
+      console.log('Refreshing all data from database...');
+      
+      // Get main data
+      const data = await storage.get({
+        'userPrompts': [],
+        'corePrompts': defaultPrompts,
+        'favorites': [],
+        'recentlyUsed': [],
+        'userCategories': [],
+        'settings': { fontSize: 'medium' }
+      });
+      
+      // Get responses separately using direct method
+      const responseData = await storage.getResponses();
+      
+      // Get favorites directly using the dedicated method
+      const favoritesData = await storage.getFavorites();
+      
+      
+      // Update state with refreshed data
+      setUserPrompts(data.userPrompts);
+      setCorePrompts(data.corePrompts);
+      setFavorites(favoritesData);
+      setRecentlyUsed(Array.isArray(data.recentlyUsed) ? data.recentlyUsed : []);
+      setUserCategories(data.userCategories);
+      setSettings(data.settings);
+      setResponses(responseData);
+      
+      return true;
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      return false;
+    }
+  }
+
   // Return all context values
   const value = {
     // Data
@@ -448,6 +581,9 @@ export function PromptProvider({ children }) {
     getResponsesForPrompt,
     countResponsesForPrompt,
     submitPromptToAi,
+    
+    // Data management
+    refreshData,
     
     // Helper function
     allPrompts: [...corePrompts, ...userPrompts]

@@ -6,9 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:setup": "npx prisma migrate dev --name init",
+    "db:reset": "npx prisma migrate reset --force",
+    "db:init": "node scripts/init-db.js",
+    "db:populate": "node scripts/populate-db.js"
   },
   "dependencies": {
+    "@prisma/client": "^6.8.2",
     "date-fns": "^4.1.0",
     "dotenv-webpack": "^8.1.0",
     "next": "^14.1.0",
@@ -26,6 +31,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.1.0",
     "postcss": "^8.4.33",
+    "prisma": "^6.8.2",
     "typescript": "^5.3.3"
   }
 }

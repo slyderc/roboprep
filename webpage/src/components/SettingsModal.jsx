@@ -16,7 +16,8 @@ export function SettingsModal({ isOpen, onClose }) {
     MAX_USER_CATEGORIES,
     addCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    refreshData
   } = usePrompts();
   
   const [fontSize, setFontSize] = useState(settings.fontSize || 'medium');
@@ -101,9 +102,6 @@ export function SettingsModal({ isOpen, onClose }) {
         });
         console.log('Import result:', result);
         
-        // Force a reload of the page to update the context
-        const needsReload = result.success && (result.newPromptsCount > 0 || result.responsesCount > 0);
-        
         if (result.success) {
           let message = '';
           
@@ -123,15 +121,22 @@ export function SettingsModal({ isOpen, onClose }) {
             
             showToast(message);
             
-            // Close the modal after success
-            if (needsReload) {
-              setTimeout(() => {
-                onClose();
-                // Wait a moment then reload the page to ensure context is updated
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500);
-              }, 1500);
+            // If data was imported, refresh the context and close the modal
+            if (result.newPromptsCount > 0 || result.responsesCount > 0) {
+              // Apply a loading state while refreshing data
+              showToast('Refreshing data...', 'info');
+              
+              setTimeout(async () => {
+                // Refresh data from the database
+                const refreshSuccess = await refreshData();
+                
+                if (refreshSuccess) {
+                  showToast('Data refreshed successfully');
+                  onClose();
+                } else {
+                  showToast('Error refreshing data. Please reload the page.', 'error');
+                }
+              }, 1000);
             }
           }
         } else {

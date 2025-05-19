@@ -125,6 +125,21 @@ export function HomePage() {
         response={aiResponse}
         loading={isLoading}
         error={responseError}
+        onNewResponse={async (prompt) => {
+          // Generate a new response with the same prompt
+          setIsLoading(true);
+          setResponseError(null);
+          
+          try {
+            const result = await submitPromptToAi(prompt);
+            setAiResponse(result);
+          } catch (error) {
+            console.error('Error submitting to AI:', error);
+            setResponseError(error);
+          } finally {
+            setIsLoading(false);
+          }
+        }}
       />
       
       <ResponseListModal

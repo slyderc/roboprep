@@ -19,6 +19,15 @@ debug*.js
 .env.test.local
 .env.production.local
 
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+roboprep.db
+roboprep.db-journal
+
 # OpenAI API keys and configuration
 .openai-credentials
 *.openai-key
