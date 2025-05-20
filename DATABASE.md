@@ -40,6 +40,7 @@ model User {
   favorites     UserFavorite[]
   recentlyUsed  UserRecentlyUsed[]
   sessions      Session[]
+  responses     Response[]
 }
 ```
 
@@ -86,9 +87,7 @@ model Prompt {
   lastUsed     DateTime?
   lastEdited   DateTime?
   responses    Response[]
-  favorites    Favorite[]
   userFavorites UserFavorite[]
-  recentlyUsed RecentlyUsed[]
   userRecentlyUsed UserRecentlyUsed[]
 }
 ```
@@ -157,11 +156,12 @@ model UserRecentlyUsed {
 ```
 
 #### Response
-Stores AI-generated responses to prompts.
+Stores AI-generated responses to prompts with user attribution.
 ```prisma
 model Response {
   id              String    @id
   promptId        String
+  userId          String?
   responseText    String
   modelUsed       String?
   promptTokens    Int?
@@ -171,6 +171,7 @@ model Response {
   lastEdited      DateTime?
   variablesUsed   String?   // JSON string for variable values
   prompt          Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 ```
 
@@ -178,31 +179,14 @@ model Response {
 These models are maintained for backward compatibility:
 
 ```prisma
-// Global Favorites (legacy, maintained for backward compatibility)
-model Favorite {
-  id       String @id @default(cuid())
-  promptId String
-  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
-
-  @@unique([promptId])
-}
-
-// Global Recently Used (legacy, maintained for backward compatibility)
-model RecentlyUsed {
-  id        String   @id @default(cuid())
-  promptId  String
-  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
-  usedAt    DateTime @default(now())
-
-  @@index([usedAt])
-}
-
 // Global Settings (legacy, maintained for backward compatibility)
 model Setting {
   key   String @id
   value String // JSON string for setting values
 }
 ```
+
+> **Note**: The `Favorite` and `RecentlyUsed` tables have been removed as they've been completely replaced by the user-specific `UserFavorite` and `UserRecentlyUsed` tables.
 
 ## Authentication Implementation
 
@@ -245,12 +229,13 @@ The database schema is designed to support multi-user environments with proper d
 
 2. **Shared Data**:
    - All prompts are accessible to all users
-   - AI responses are shared among all users
+   - AI responses include attribution to their creator but are visible to all users
    - Categories and tags are global
 
 3. **Data Migration Strategy**:
-   - Legacy tables (Favorite, RecentlyUsed, Setting) are maintained for backward compatibility
-   - New user-specific tables contain user-linked data
+   - Legacy global `Setting` table is maintained for backward compatibility
+   - Legacy `Favorite` and `RecentlyUsed` tables have been removed, fully replaced by user-specific tables
+   - All user-specific tables contain user-linked data
 
 ## Implementation Details
 
@@ -562,6 +547,8 @@ The database includes version tracking to manage future schema changes:
 - User activity tracking and analytics
 - User preferences for OpenAI integration
 - User quota management
+- Response privacy options (private vs. public responses)
+- Enhanced user identification in the UI
 
 ### Tag System Enhancements
 - Server-side tag filtering for improved performance with large datasets
