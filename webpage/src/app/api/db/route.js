@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/db';
+import { prisma, getDbStats } from '../../../lib/db';
 import { checkUserAuth } from './client-auth';
 
 export async function POST(request) {
@@ -7,8 +7,6 @@ export async function POST(request) {
     // Check authentication without using middleware
     const authCheck = await checkUserAuth();
     if (!authCheck.isAuthenticated) {
-      // For debugging, still allow the request but include auth info in response
-      console.log('DB API: User not authenticated:', authCheck.message);
       // Uncomment to enforce authentication:
       // return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -67,6 +65,8 @@ export async function POST(request) {
         return await handleClearData();
       case 'checkPromptExists':
         return await handleCheckPromptExists(params);
+      case 'getDbStats':
+        return await handleGetDbStats();
       default:
         return NextResponse.json(
           { error: `Unknown operation: ${operation}` },
@@ -89,6 +89,12 @@ async function handleCheckPromptExists({ promptId }) {
   });
   
   return NextResponse.json({ exists: !!prompt });
+}
+
+// Get database statistics
+async function handleGetDbStats() {
+  const stats = await getDbStats();
+  return NextResponse.json(stats);
 }
 
 // Single setting retrieval
@@ -209,8 +215,6 @@ async function handleRemoveSetting({ key }) {
 
 // Get user prompts
 async function handleGetUserPrompts() {
-  console.log('handleGetUserPrompts called');
-  
   const prompts = await prisma.prompt.findMany({
     where: { isUserCreated: true },
     include: {
@@ -246,10 +250,20 @@ async function handleGetCorePrompts() {
 // Get favorites
 async function handleGetFavorites() {
   try {
-    console.log('Fetching favorites from database');
-    const favorites = await prisma.favorite.findMany();
+    // Get authenticated user
+    const authCheck = await checkUserAuth();
+    if (!authCheck.isAuthenticated) {
+      return NextResponse.json([]);
+    }
+    
+    const userId = authCheck.user.id;
+    
+    // Get user's favorites
+    const favorites = await prisma.userFavorite.findMany({
+      where: { userId }
+    });
+    
     const favoriteIds = favorites.map(f => f.promptId);
-    console.log(`Found ${favoriteIds.length} favorites in database`);
     return NextResponse.json(favoriteIds);
   } catch (error) {
     console.error('Error fetching favorites:', error);
@@ -259,13 +273,29 @@ async function handleGetFavorites() {
 
 // Get recently used
 async function handleGetRecentlyUsed() {
-  const recentlyUsed = await prisma.recentlyUsed.findMany({
-    orderBy: {
-      usedAt: 'desc'
+  try {
+    // Get authenticated user
+    const authCheck = await checkUserAuth();
+    if (!authCheck.isAuthenticated) {
+      return NextResponse.json([]);
     }
-  });
-  
-  return NextResponse.json(recentlyUsed.map(r => r.promptId));
+    
+    const userId = authCheck.user.id;
+    
+    // Get user's recently used prompts
+    const recentlyUsed = await prisma.userRecentlyUsed.findMany({
+      where: { userId },
+      orderBy: {
+        usedAt: 'desc'
+      }
+    });
+    
+    const recentlyUsedIds = recentlyUsed.map(r => r.promptId);
+    return NextResponse.json(recentlyUsedIds);
+  } catch (error) {
+    console.error('Error fetching recently used prompts:', error);
+    return NextResponse.json([]);
+  }
 }
 
 // Get user categories
@@ -283,17 +313,50 @@ async function handleGetUserCategories() {
 
 // Get responses
 async function handleGetResponses() {
-  const responses = await prisma.response.findMany();
-  return NextResponse.json(responses.map(formatResponseFromDb));
+  try {
+    const responses = await prisma.response.findMany({
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    return NextResponse.json(responses.map(formatResponseFromDb));
+  } catch (error) {
+    console.error('Error fetching responses:', error);
+    return NextResponse.json([]);
+  }
 }
 
 // Get responses for prompt
 async function handleGetResponsesForPrompt({ promptId }) {
-  const responses = await prisma.response.findMany({
-    where: { promptId }
-  });
-  
-  return NextResponse.json(responses.map(formatResponseFromDb));
+  try {
+    const responses = await prisma.response.findMany({
+      where: { promptId },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    return NextResponse.json(responses.map(formatResponseFromDb));
+  } catch (error) {
+    console.error(`Error fetching responses for prompt ${promptId}:`, error);
+    return NextResponse.json([]);
+  }
 }
 
 // Save response
@@ -308,22 +371,68 @@ async function handleSaveResponse({ response }) {
     response.createdAt = new Date().toISOString();
   }
   
-  // Save to database
-  const savedResponse = await prisma.response.create({
-    data: {
-      id: response.id,
-      promptId: response.promptId,
-      responseText: response.responseText,
-      modelUsed: response.modelUsed,
-      promptTokens: response.promptTokens,
-      completionTokens: response.completionTokens,
-      totalTokens: response.totalTokens,
-      createdAt: new Date(response.createdAt),
-      variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
+  try {
+    // Get the authenticated user (if any)
+    const authCheck = await checkUserAuth();
+    const userId = authCheck.isAuthenticated ? authCheck.user.id : null;
+    
+    // Check if response with this ID already exists
+    const existingResponse = await prisma.response.findUnique({
+      where: { id: response.id }
+    });
+    
+    let savedResponse;
+    
+    if (existingResponse) {
+      // Update existing response
+      savedResponse = await prisma.response.update({
+        where: { id: response.id },
+        data: {
+          responseText: response.responseText,
+          modelUsed: response.modelUsed || existingResponse.modelUsed,
+          promptTokens: response.promptTokens || existingResponse.promptTokens,
+          completionTokens: response.completionTokens || existingResponse.completionTokens,
+          totalTokens: response.totalTokens || existingResponse.totalTokens,
+          lastEdited: new Date(),
+          variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : existingResponse.variablesUsed
+        }
+      });
+    } else {
+      // Create new response
+      savedResponse = await prisma.response.create({
+        data: {
+          id: response.id,
+          promptId: response.promptId,
+          userId: userId, // Associate with current user
+          responseText: response.responseText,
+          modelUsed: response.modelUsed,
+          promptTokens: response.promptTokens,
+          completionTokens: response.completionTokens,
+          totalTokens: response.totalTokens,
+          createdAt: new Date(response.createdAt),
+          variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
+        }
+      });
     }
-  });
-  
-  return NextResponse.json(formatResponseFromDb(savedResponse));
+    
+    // Get the response with user data for display
+    const responseWithUser = await prisma.response.findUnique({
+      where: { id: savedResponse.id },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+    
+    return NextResponse.json(formatResponseFromDb(responseWithUser));
+  } catch (error) {
+    console.error(`Error saving response ${response.id}:`, error);
+    throw error;
+  }
 }
 
 // Delete response
@@ -369,15 +478,94 @@ async function handleAddUserPrompts({ prompts }) {
 
 // Store prompts helper (replacing all)
 async function storePrompts(prompts, isUserCreated) {
-  // Delete existing prompts of this type
-  await prisma.prompt.deleteMany({
-    where: { isUserCreated }
+  // Get all existing prompts of this type
+  const existingPrompts = await prisma.prompt.findMany({
+    where: { isUserCreated },
+    include: { responses: true }
   });
   
-  // Create new prompts with their tags
-  for (const prompt of prompts) {
-    await createPromptWithTags(prompt, isUserCreated);
-  }
+  // Create a map of existing prompt IDs
+  const existingPromptsMap = new Map(existingPrompts.map(p => [p.id, p]));
+  
+  // Create a set of prompt IDs that we're going to update
+  const newPromptIds = new Set(prompts.map(p => p.id));
+  
+  // Start a transaction
+  await prisma.$transaction(async (tx) => {
+    // 1. Delete prompts that aren't in the new set (avoiding those with responses)
+    for (const existingPrompt of existingPrompts) {
+      if (!newPromptIds.has(existingPrompt.id) && existingPrompt.responses.length === 0) {
+        await tx.prompt.delete({
+          where: { id: existingPrompt.id }
+        });
+      }
+    }
+    
+    // 2. Update or create each prompt
+    for (const prompt of prompts) {
+      const exists = existingPromptsMap.has(prompt.id);
+      
+      // Extract tags
+      const tags = prompt.tags || [];
+      
+      // Prepare prompt data
+      const promptData = {
+        title: prompt.title,
+        description: prompt.description || '',
+        categoryId: prompt.category || null,
+        promptText: prompt.promptText,
+        isUserCreated,
+        usageCount: prompt.usageCount || 0,
+        createdAt: new Date(prompt.createdAt || new Date()),
+        lastUsed: prompt.lastUsed ? new Date(prompt.lastUsed) : null,
+        lastEdited: prompt.lastEdited ? new Date(prompt.lastEdited) : null,
+      };
+      
+      if (exists) {
+        // Update existing prompt
+        await tx.prompt.update({
+          where: { id: prompt.id },
+          data: promptData
+        });
+        
+        // Delete existing tags for this prompt
+        await tx.promptTag.deleteMany({
+          where: { promptId: prompt.id }
+        });
+      } else {
+        // Create new prompt
+        await tx.prompt.create({
+          data: {
+            id: prompt.id,
+            ...promptData
+          }
+        });
+      }
+      
+      // Create tags if needed and connect to prompt
+      for (const tagName of tags) {
+        // Find or create tag
+        let tag = await tx.tag.findFirst({
+          where: { name: tagName }
+        });
+        
+        if (!tag) {
+          tag = await tx.tag.create({
+            data: { name: tagName }
+          });
+        }
+        
+        // Create prompt-tag relationship
+        await tx.promptTag.create({
+          data: {
+            promptId: prompt.id,
+            tagId: tag.id
+          }
+        });
+      }
+    }
+  });
+  
   
   return true;
 }
@@ -387,91 +575,94 @@ async function addPrompts(prompts, isUserCreated) {
   let added = 0;
   let skipped = 0;
   
-  // Create new prompts with their tags
-  for (const prompt of prompts) {
-    // Check if prompt already exists
-    const existingPrompt = await prisma.prompt.findUnique({
-      where: { id: prompt.id }
-    });
-    
-    // Skip if already exists
-    if (existingPrompt) {
-      skipped++;
-      continue;
+  // Start a transaction
+  await prisma.$transaction(async (tx) => {
+    // Create new prompts with their tags
+    for (const prompt of prompts) {
+      // Check if prompt already exists
+      const existingPrompt = await tx.prompt.findUnique({
+        where: { id: prompt.id }
+      });
+      
+      // Skip if already exists
+      if (existingPrompt) {
+        skipped++;
+        continue;
+      }
+      
+      // Extract tags
+      const tags = prompt.tags || [];
+      
+      // Create prompt
+      await tx.prompt.create({
+        data: {
+          id: prompt.id,
+          title: prompt.title,
+          description: prompt.description || '',
+          categoryId: prompt.category || null,
+          promptText: prompt.promptText,
+          isUserCreated,
+          usageCount: prompt.usageCount || 0,
+          createdAt: new Date(prompt.createdAt || new Date()),
+          lastUsed: prompt.lastUsed ? new Date(prompt.lastUsed) : null,
+          lastEdited: prompt.lastEdited ? new Date(prompt.lastEdited) : null,
+        }
+      });
+      
+      // Create tags if needed and connect to prompt
+      for (const tagName of tags) {
+        // Find or create tag
+        let tag = await tx.tag.findFirst({
+          where: { name: tagName }
+        });
+        
+        if (!tag) {
+          tag = await tx.tag.create({
+            data: { name: tagName }
+          });
+        }
+        
+        // Create prompt-tag relationship
+        await tx.promptTag.create({
+          data: {
+            promptId: prompt.id,
+            tagId: tag.id
+          }
+        });
+      }
+      
+      added++;
     }
-    
-    await createPromptWithTags(prompt, isUserCreated);
-    added++;
-  }
+  });
   
   return true;
 }
 
-// Helper to create a prompt with its tags
-async function createPromptWithTags(prompt, isUserCreated) {
-  // Extract tags
-  const tags = prompt.tags || [];
-  
-  // Ensure prompt has all required fields
-  const promptData = {
-    id: prompt.id,
-    title: prompt.title,
-    description: prompt.description || '',
-    categoryId: prompt.category || null,
-    promptText: prompt.promptText,
-    isUserCreated,
-    usageCount: prompt.usageCount || 0,
-    createdAt: new Date(prompt.createdAt || new Date()),
-    lastUsed: prompt.lastUsed ? new Date(prompt.lastUsed) : null,
-    lastEdited: prompt.lastEdited ? new Date(prompt.lastEdited) : null,
-  };
-  
-  // Create prompt
-  try {
-    await prisma.prompt.create({
-      data: promptData
-    });
-    
-    // Create tags if needed and connect to prompt
-    for (const tagName of tags) {
-      // Find or create tag
-      let tag = await prisma.tag.findFirst({
-        where: { name: tagName }
-      });
-      
-      if (!tag) {
-        tag = await prisma.tag.create({
-          data: { name: tagName }
-        });
-      }
-      
-      // Create prompt-tag relationship
-      await prisma.promptTag.create({
-        data: {
-          promptId: prompt.id,
-          tagId: tag.id
-        }
-      });
-    }
-    
-    return true;
-  } catch (error) {
-    console.error(`Error creating prompt ${prompt.title}:`, error);
-    return false;
-  }
-}
+// This function has been refactored and incorporated directly into storePrompts and addPrompts
 
 // Store favorites
 async function handleStoreFavorites({ favorites }) {
-  console.log(`Storing ${favorites.length} favorites to database`);
-  
   try {
+    // Get authenticated user
+    const authCheck = await checkUserAuth();
+    if (!authCheck.isAuthenticated) {
+      console.log('User not authenticated, cannot store favorites');
+      return NextResponse.json({
+        success: false,
+        error: 'User not authenticated'
+      }, { status: 401 });
+    }
+    
+    const userId = authCheck.user.id;
+    
     // Start a transaction to ensure data consistency
     await prisma.$transaction(async (tx) => {
-      // Delete existing favorites
-      await tx.favorite.deleteMany({});
+      // Delete existing user favorites
+      await tx.userFavorite.deleteMany({
+        where: { userId }
+      });
       
-      // Create new favorites
+      // Create new user favorites
       for (const promptId of favorites) {
         // Check if prompt exists
         const promptExists = await tx.prompt.findUnique({
@@ -479,8 +670,11 @@ async function handleStoreFavorites({ favorites }) {
         });
         
         if (promptExists) {
-          await tx.favorite.create({
-            data: { promptId }
+          await tx.userFavorite.create({
+            data: { 
+              userId,
+              promptId 
+            }
           });
         } else {
           console.warn(`Skipping favorite for non-existent prompt: ${promptId}`);
@@ -489,8 +683,9 @@ async function handleStoreFavorites({ favorites }) {
     });
     
     // Verify the operation by fetching the updated favorites
-    const updatedFavorites = await prisma.favorite.findMany();
-    console.log(`Successfully stored ${updatedFavorites.length} favorites to database`);
+    const updatedFavorites = await prisma.userFavorite.findMany({
+      where: { userId }
+    });
     
     return NextResponse.json({ 
       success: true, 
@@ -508,30 +703,66 @@ async function handleStoreFavorites({ favorites }) {
 
 // Store recently used
 async function handleStoreRecentlyUsed({ recentlyUsed }) {
-  // Delete existing recently used
-  await prisma.recentlyUsed.deleteMany({});
-  
-  // Create new recently used in order
-  for (let i = 0; i < recentlyUsed.length; i++) {
-    const promptId = recentlyUsed[i];
+  try {
+    // Get authenticated user
+    const authCheck = await checkUserAuth();
+    if (!authCheck.isAuthenticated) {
+      return NextResponse.json({
+        success: false,
+        error: 'User not authenticated'
+      }, { status: 401 });
+    }
     
-    // Check if prompt exists
-    const promptExists = await prisma.prompt.findUnique({
-      where: { id: promptId }
+    const userId = authCheck.user.id;
+    
+    // Start a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete existing user recently used
+      await tx.userRecentlyUsed.deleteMany({
+        where: { userId }
+      });
+      
+      // Create new recently used in order
+      for (let i = 0; i < recentlyUsed.length; i++) {
+        const promptId = recentlyUsed[i];
+        
+        // Check if prompt exists
+        const promptExists = await tx.prompt.findUnique({
+          where: { id: promptId }
+        });
+        
+        if (promptExists) {
+          await tx.userRecentlyUsed.create({
+            data: {
+              userId,
+              promptId,
+              // Use offset to preserve order (newest first)
+              usedAt: new Date(Date.now() - i * 1000)
+            }
+          });
+        } else {
+          console.warn(`Skipping recently used for non-existent prompt: ${promptId}`);
+        }
+      }
     });
     
-    if (promptExists) {
-      await prisma.recentlyUsed.create({
-        data: {
-          promptId,
-          // Use offset to preserve order (newest first)
-          usedAt: new Date(Date.now() - i * 1000)
-        }
-      });
-    }
+    // Verify the operation
+    const updatedRecentlyUsed = await prisma.userRecentlyUsed.findMany({
+      where: { userId },
+      orderBy: { usedAt: 'desc' }
+    });
+    
+    return NextResponse.json({ 
+      success: true, 
+      count: updatedRecentlyUsed.length
+    });
+  } catch (error) {
+    console.error('Error storing recently used prompts:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
-  
-  return NextResponse.json({ success: true });
 }
 
 // Store user categories (replacing all)
@@ -583,78 +814,136 @@ async function handleAddUserCategories({ categories }) {
 
 // Store responses (replacing all)
 async function handleStoreResponses({ responses }) {
-  // Delete existing responses
-  await prisma.response.deleteMany({});
-  
-  // Create new responses
-  for (const response of responses) {
-    await prisma.response.create({
-      data: {
-        id: response.id,
-        promptId: response.promptId,
-        responseText: response.responseText,
-        modelUsed: response.modelUsed,
-        promptTokens: response.promptTokens,
-        completionTokens: response.completionTokens,
-        totalTokens: response.totalTokens,
-        createdAt: new Date(response.createdAt),
-        lastEdited: response.lastEdited ? new Date(response.lastEdited) : null,
-        variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
+  try {
+    
+    // Start a transaction to ensure data consistency
+    await prisma.$transaction(async (tx) => {
+      // Delete existing responses
+      await tx.response.deleteMany({});
+      
+      // Create new responses
+      for (const response of responses) {
+        if (!response.id || !response.promptId) {
+          continue;
+        }
+        
+        await tx.response.create({
+          data: {
+            id: response.id,
+            promptId: response.promptId,
+            responseText: response.responseText || '',
+            modelUsed: response.modelUsed,
+            promptTokens: response.promptTokens,
+            completionTokens: response.completionTokens,
+            totalTokens: response.totalTokens,
+            createdAt: new Date(response.createdAt || Date.now()),
+            lastEdited: response.lastEdited ? new Date(response.lastEdited) : null,
+            variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
+          }
+        });
       }
     });
+    
+    // Verify operation
+    const count = await prisma.response.count();
+    
+    return NextResponse.json({ success: true, count });
+  } catch (error) {
+    console.error('Failed to store responses:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
-  
-  return NextResponse.json({ success: true });
 }
 
 // Add responses (appending to existing)
 async function handleAddResponses({ responses }) {
-  // Create new responses
-  for (const response of responses) {
-    // Check if response already exists
-    const existingResponse = await prisma.response.findUnique({
-      where: { id: response.id }
-    });
+  try {
+    let added = 0;
+    let skipped = 0;
     
-    // Skip if already exists
-    if (existingResponse) {
-      continue;
+    // Create new responses one by one
+    for (const response of responses) {
+      if (!response.id || !response.promptId) {
+        skipped++;
+        continue;
+      }
+      
+      // Check if response already exists
+      const existingResponse = await prisma.response.findUnique({
+        where: { id: response.id }
+      });
+      
+      // Skip if already exists
+      if (existingResponse) {
+        skipped++;
+        continue;
+      }
+      
+      await prisma.response.create({
+        data: {
+          id: response.id,
+          promptId: response.promptId,
+          responseText: response.responseText || '',
+          modelUsed: response.modelUsed,
+          promptTokens: response.promptTokens,
+          completionTokens: response.completionTokens,
+          totalTokens: response.totalTokens,
+          createdAt: new Date(response.createdAt || Date.now()),
+          lastEdited: response.lastEdited ? new Date(response.lastEdited) : null,
+          variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
+        }
+      });
+      added++;
     }
     
-    await prisma.response.create({
-      data: {
-        id: response.id,
-        promptId: response.promptId,
-        responseText: response.responseText,
-        modelUsed: response.modelUsed,
-        promptTokens: response.promptTokens,
-        completionTokens: response.completionTokens,
-        totalTokens: response.totalTokens,
-        createdAt: new Date(response.createdAt),
-        lastEdited: response.lastEdited ? new Date(response.lastEdited) : null,
-        variablesUsed: response.variablesUsed ? JSON.stringify(response.variablesUsed) : null
-      }
-    });
+    return NextResponse.json({ success: true, added, skipped });
+  } catch (error) {
+    console.error('Failed to add responses:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
-  
-  return NextResponse.json({ success: true });
 }
 
 // Clear all data
 async function handleClearData() {
-  // Delete all data in all tables, maintaining referential integrity order
-  await prisma.$transaction([
-    prisma.response.deleteMany(),
-    prisma.recentlyUsed.deleteMany(),
-    prisma.favorite.deleteMany(),
-    prisma.promptTag.deleteMany(),
-    prisma.tag.deleteMany(),
-    prisma.prompt.deleteMany(),
-    prisma.category.deleteMany(),
-    prisma.setting.deleteMany()
-  ]);
-  
-  return NextResponse.json({ success: true });
+  // Get authenticated user
+  const authCheck = await checkUserAuth();
+  if (!authCheck.isAuthenticated || !authCheck.user.isAdmin) {
+    console.log('User not authenticated or not admin, cannot clear data');
+    return NextResponse.json({
+      success: false,
+      error: 'Admin privileges required'
+    }, { status: 401 });
+  }
+
+  try {
+    
+    // Delete all data in all tables, maintaining referential integrity order
+    await prisma.$transaction([
+      prisma.response.deleteMany(),
+      prisma.userRecentlyUsed.deleteMany(),
+      prisma.userFavorite.deleteMany(),
+      prisma.promptTag.deleteMany(),
+      prisma.tag.deleteMany(),
+      prisma.prompt.deleteMany(),
+      prisma.category.deleteMany(),
+      prisma.setting.deleteMany(),
+      prisma.userSetting.deleteMany(),
+      // Don't delete users and sessions to preserve authentication
+    ]);
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to clear data:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
+  }
 }
 
 // Helper function to format prompt from database
@@ -689,7 +978,7 @@ function formatResponseFromDb(dbResponse) {
     }
   }
   
-  return {
+  const formattedResponse = {
     id: dbResponse.id,
     promptId: dbResponse.promptId,
     responseText: dbResponse.responseText,
@@ -701,4 +990,14 @@ function formatResponseFromDb(dbResponse) {
     lastEdited: dbResponse.lastEdited ? dbResponse.lastEdited.toISOString() : null,
     variablesUsed
   };
+
+  // Include user information if available
+  if (dbResponse.user) {
+    formattedResponse.user = {
+      firstName: dbResponse.user.firstName,
+      lastName: dbResponse.user.lastName
+    };
+  }
+  
+  return formattedResponse;
 }

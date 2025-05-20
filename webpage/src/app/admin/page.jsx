@@ -6,14 +6,17 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input, Label, FormGroup } from '@/components/ui/Input';
 import { showToast } from '@/lib/toastUtil';
+import DbStatsPanel from '@/components/DbStatsPanel';
 
 export default function AdminPage() {
-  const { user, isAdmin } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -24,13 +27,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     // Check if user is admin, if not redirect to home
-    if (user && !isAdmin) {
+    if (currentUser && !isAdmin) {
       router.push('/');
     }
 
     // Fetch users
     fetchUsers();
-  }, [user, isAdmin, router]);
+  }, [currentUser, isAdmin, router]);
 
   const fetchUsers = async () => {
     try {
@@ -89,6 +92,9 @@ export default function AdminPage() {
       });
       setShowAddUser(false);
       fetchUsers();
+      
+      // Trigger stats refresh
+      setStatsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error adding user:', error);
       showToast(error.message, 'error');
@@ -96,11 +102,31 @@ export default function AdminPage() {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user?')) {
+    console.log('handleDeleteUser called with userId:', userId);
+    
+    // Get user details for the confirmation message
+    const userToDelete = users.find(u => u.id === userId);
+    if (!userToDelete) {
+      showToast('User not found', 'error');
+      console.error('User not found for deletion:', userId, 'Available users:', users);
       return;
     }
     
+    // Show a more detailed confirmation dialog
+    const confirmMessage = `Are you sure you want to delete user ${userToDelete.email}? This will permanently remove the user and all their data, including favorites, settings, and usage history.`;
+    
+    if (!confirm(confirmMessage)) {
+      console.log('User deletion cancelled by confirmation dialog');
+      return;
+    }
+    
+    console.log('Beginning user deletion process for', userToDelete.email);
+    
+    // Set deleting state for this specific user
+    setDeletingUserId(userId);
+    
     try {
+      // Delete the user
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE'
       });
@@ -110,11 +136,17 @@ export default function AdminPage() {
         throw new Error(data.error || 'Failed to delete user');
       }
       
-      showToast('User deleted successfully');
+      // Show success toast and refresh user list
+      showToast(`User ${userToDelete.email} deleted successfully`);
       fetchUsers();
+      
+      // Trigger stats refresh
+      setStatsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error deleting user:', error);
-      showToast(error.message, 'error');
+      showToast(`Error deleting user: ${error.message}`, 'error');
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -169,7 +201,7 @@ export default function AdminPage() {
     }
   };
 
-  if (loading && !user) {
+  if (loading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -185,9 +217,9 @@ export default function AdminPage() {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Manage users and permissions
+              Manage users, permissions, and view database statistics
             </p>
           </div>
           <div className="flex gap-2">
@@ -205,6 +237,11 @@ export default function AdminPage() {
             </Button>
           </div>
         </div>
+        
+        {/* Database Statistics Panel */}
+        <DbStatsPanel refreshTrigger={statsRefreshTrigger} />
+        
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">User Management</h2>
 
         {/* Add User Form */}
         {showAddUser && (
@@ -369,22 +406,33 @@ export default function AdminPage() {
                         <div className="flex justify-end space-x-2">
                           <button
                             onClick={() => toggleAdminStatus(user.id, user.isAdmin)}
-                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200"
+                            className="px-2 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800 transition-colors"
+                            disabled={user.id === currentUser?.id}
                           >
                             {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
                           </button>
                           <button
                             onClick={() => handleResetPassword(user.id)}
-                            className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-200"
+                            className="px-2 py-1 text-xs font-medium rounded-md bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200 dark:hover:bg-yellow-800 transition-colors"
                           >
                             Reset Password
                           </button>
                           <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200"
-                            disabled={user.id === user?.id} // Can't delete yourself
+                            onClick={() => {
+                              if (!(user.id === currentUser?.id || deletingUserId === user.id)) {
+                                handleDeleteUser(user.id);
+                              }
+                            }}
+                            className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                              user.id === currentUser?.id
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500'
+                                : deletingUserId === user.id
+                                ? 'bg-red-50 text-gray-500 animate-pulse dark:bg-red-900 dark:text-gray-400'
+                                : 'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800'
+                            }`}
+                            disabled={user.id === currentUser?.id || deletingUserId === user.id}
                           >
-                            Delete
+                            {deletingUserId === user.id ? 'Deleting...' : 'Delete'}
                           </button>
                         </div>
                       </td>

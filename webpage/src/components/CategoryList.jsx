@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import { usePrompts } from '../context/PromptContext';
+import { useAuth } from '../context/AuthContext';
 
 export function CategoryList() {
   const { categories, activeCategory, setActiveCategory } = usePrompts();
+  const { user, logout } = useAuth();
   
   // Sort and organize categories
   const organizedCategories = useMemo(() => {
@@ -80,12 +82,43 @@ export function CategoryList() {
     );
   };
   
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="py-3 px-1 categories-panel">
       <h2 className="text-base font-medium text-gray-700 mb-3 px-1 category-heading">CATEGORIES</h2>
       <div className="category-list">
         {organizedCategories.map(category => renderCategory(category))}
       </div>
+      
+      {/* User info and logout section */}
+      <div className="mt-8 px-2 py-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
+          {user?.firstName || 'Guest'}
+        </div>
+        <div className="flex justify-between items-center">
+          {user?.isAdmin && (
+            <span className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-0.5 rounded-full text-xs font-medium">
+              Admin
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="inactive-tag theme-aware-tag filter-tag text-xs font-medium"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+      {/* Remove any potential decorative elements */}
+      <style jsx>{`
+        /* Ensure there are no decorative pseudo-elements */
+        div::after, div::before {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

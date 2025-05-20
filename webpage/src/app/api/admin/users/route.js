@@ -53,7 +53,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { email, password, firstName, lastName, isAdmin } = body;
+    const { email, password, firstName, lastName, isAdmin: userIsAdmin } = body;
 
     // Validate input
     if (!email || !password) {
@@ -85,7 +85,7 @@ export async function POST(request) {
         password: hashedPassword,
         firstName: firstName || null,
         lastName: lastName || null,
-        isAdmin: isAdmin || false,
+        isAdmin: userIsAdmin || false,
       },
     });
 

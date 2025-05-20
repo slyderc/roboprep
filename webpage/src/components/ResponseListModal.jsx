@@ -57,17 +57,25 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
                 {/* Variables used */}
                 {response.variablesUsed && Object.keys(response.variablesUsed).length > 0 && (
                   <div className="mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(response.variablesUsed).map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-1 max-w-full">
-                          <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 text-xs font-medium truncate max-w-[120px]" title={key}>
-                            {key}
-                          </span>
-                          <span className="text-gray-600 dark:text-gray-300 text-sm truncate max-w-[180px]" title={value}>
-                            {value}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(response.variablesUsed).map(([key, value]) => (
+                          <div key={key} className="flex items-center gap-1 max-w-full">
+                            <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 text-xs font-medium truncate max-w-[120px]" title={key}>
+                              {key}
+                            </span>
+                            <span className="text-gray-600 dark:text-gray-300 text-sm truncate max-w-[180px]" title={value}>
+                              {value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* User's full name on the right */}
+                      <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap ml-4">
+                        {response.user?.firstName && response.user?.lastName 
+                          ? `${response.user.firstName} ${response.user.lastName}`
+                          : response.user?.firstName || "System"}
+                      </span>
                     </div>
                   </div>
                 )}

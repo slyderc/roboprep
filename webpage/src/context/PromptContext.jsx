@@ -219,6 +219,9 @@ export function PromptProvider({ children }) {
         aiResponses: updatedResponses
       });
       
+      // Refresh data to update statistics and UI elements
+      await refreshData();
+      
       return true;
     }
     
@@ -411,7 +414,7 @@ export function PromptProvider({ children }) {
     };
     
     try {
-      // Use the direct saveResponse API endpoint
+      // Use the direct saveResponse API endpoint with the current user's ID
       const savedResponse = await storage.saveResponse(newResponse);
       
       // Update the local state
@@ -519,10 +522,10 @@ export function PromptProvider({ children }) {
       
       // Get responses separately using direct method
       const responseData = await storage.getResponses();
+      console.log(`Fetched ${responseData.length} responses from database`);
       
       // Get favorites directly using the dedicated method
       const favoritesData = await storage.getFavorites();
-      
       
       // Update state with refreshed data
       setUserPrompts(data.userPrompts);
