@@ -4,12 +4,12 @@ import { SettingsModal } from './SettingsModal';
 import { NewPromptModal } from './NewPromptModal';
 import { ThemeToggle } from './ThemeToggle';
 
-export function Header() {
+export function Header({ onOpenNewPrompt }) {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isNewPromptModalOpen, setIsNewPromptModalOpen] = useState(false);
   
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-[10]">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         <div className="flex flex-col">
           <div className="flex items-center">
@@ -41,27 +41,6 @@ export function Header() {
         
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          
-          <IconButton
-            title="New Prompt"
-            onClick={() => setIsNewPromptModalOpen(true)}
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-            }
-          />
           
           <IconButton
             title="Settings"

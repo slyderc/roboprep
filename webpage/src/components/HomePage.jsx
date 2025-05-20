@@ -64,7 +64,7 @@ export function HomePage() {
   
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header />
+      <Header onOpenNewPrompt={() => setIsNewPromptModalOpen(true)} />
       
       <main className="flex-grow container mx-auto px-4 py-4">
         <div className="grid grid-cols-12 gap-4 relative min-h-[calc(100vh-100px)]">
@@ -84,33 +84,6 @@ export function HomePage() {
           </div>
         </div>
       </main>
-      
-      {/* Floating New Prompt Button (Mobile) */}
-      <div className="sm:hidden fixed bottom-4 right-4">
-        <Button
-          variant="primary"
-          className="rounded-full shadow-lg px-4 py-3"
-          onClick={() => setIsNewPromptModalOpen(true)}
-          icon={
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-          }
-        >
-          New Prompt
-        </Button>
-      </div>
       
       {/* Modals */}
       <NewPromptModal

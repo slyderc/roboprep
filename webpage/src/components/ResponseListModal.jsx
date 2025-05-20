@@ -42,7 +42,7 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`${responses.length} ${responses.length === 1 ? 'response' : 'responses'} saved`} maxWidth="2xl">
       {responses.length === 0 ? (
-        <div className="text-center p-4 text-gray-500">
+        <div className="text-center p-4 text-gray-500 dark:text-gray-400">
           No saved responses found for this prompt.
         </div>
       ) : (
@@ -50,20 +50,20 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
           {responses.map((response, index) => (
             <div 
               key={response.id} 
-              className="border border-gray-200 rounded-md shadow-sm hover:border-purple-300 hover:shadow transition cursor-pointer"
+              className="border border-gray-200 dark:border-gray-700 rounded-md shadow-sm hover:border-purple-300 dark:hover:border-purple-500 hover:shadow transition cursor-pointer dark:bg-gray-800"
               onClick={() => onSelectResponse(index)}
             >
               <div className="p-3">
                 {/* Variables used */}
                 {response.variablesUsed && Object.keys(response.variablesUsed).length > 0 && (
-                  <div className="mb-2 pb-2 border-b border-gray-100">
+                  <div className="mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(response.variablesUsed).map(([key, value]) => (
                         <div key={key} className="flex items-center gap-1 max-w-full">
-                          <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-medium truncate max-w-[120px]" title={key}>
+                          <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 text-xs font-medium truncate max-w-[120px]" title={key}>
                             {key}
                           </span>
-                          <span className="text-gray-600 text-sm truncate max-w-[180px]" title={value}>
+                          <span className="text-gray-600 dark:text-gray-300 text-sm truncate max-w-[180px]" title={value}>
                             {value}
                           </span>
                         </div>
@@ -73,12 +73,12 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
                 )}
                 
                 {/* Preview of response text */}
-                <div className="text-sm text-gray-700 mb-2 line-clamp-2">
+                <div className="text-sm text-gray-700 dark:text-gray-200 mb-2 line-clamp-2">
                   {truncateText(response.responseText, 150)}
                 </div>
                 
                 {/* Metadata */}
-                <div className="flex justify-between items-center text-xs text-gray-500">
+                <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                   <div>
                     Created {formatDate(response.createdAt)}
                   </div>

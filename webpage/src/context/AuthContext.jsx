@@ -18,13 +18,23 @@ export function AuthProvider({ children }) {
     async function loadUserFromSession() {
       try {
         setLoading(true);
-        const response = await fetch('/api/auth/me');
+        
+        // Debug cookie information
+        console.log('AuthContext: Current cookies:', document.cookie);
+        
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include' // Important: include cookies with the request
+        });
+        
+        console.log('AuthContext: /api/auth/me response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
+          console.log('AuthContext: User data loaded:', data.user.email);
           setUser(data.user);
         } else {
           // If not authenticated and not on a public route, redirect will happen in middleware
+          console.log('AuthContext: Not authenticated, response was not OK');
           setUser(null);
         }
       } catch (error) {
@@ -80,6 +90,7 @@ export function AuthProvider({ children }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include', // Important: include cookies with the request
       });
 
       const data = await response.json();
@@ -87,7 +98,9 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         setUser(data.user);
         toast.success('Login successful');
-        router.push('/');
+        
+        // Give the cookie a moment to be set before redirecting
+        // Let the component handle the redirect instead
         return { success: true };
       } else {
         toast.error(data.error || 'Login failed');

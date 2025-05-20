@@ -108,6 +108,7 @@ export async function initializeDatabase() {
  */
 async function createDefaultAdminUser() {
   try {
+    // Create admin user
     const hashedPassword = await hashPassword('RoboPrepMe');
     
     const adminUser = await prisma.user.create({
@@ -121,6 +122,19 @@ async function createDefaultAdminUser() {
     });
     
     console.log('Created default admin user');
+    
+    // Also create a test user
+    const testUser = await prisma.user.create({
+      data: {
+        email: 'test@example.com',
+        password: hashedPassword,
+        firstName: 'Test',
+        lastName: 'User',
+        isAdmin: false,
+      },
+    });
+    
+    console.log('Created test user (email: test@example.com, password: RoboPrepMe)');
     
     return adminUser.id;
   } catch (error) {

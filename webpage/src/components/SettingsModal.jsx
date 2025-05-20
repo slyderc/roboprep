@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 // Import the utility functions
 import { exportPromptData, importPromptData } from '../lib/importExportUtil';
 import { showToast } from '../lib/toastUtil';
+import { AccountInfo } from './AccountInfo';
 
 export function SettingsModal({ isOpen, onClose }) {
   const { settings, updateSettings } = useSettings();
@@ -250,34 +251,34 @@ export function SettingsModal({ isOpen, onClose }) {
       }
     >
       {/* Tab navigation */}
-      <div className="flex border-b mb-4">
+      <div className="flex border-b dark:border-gray-700 mb-6 pt-1">
         <button
-          className={`px-4 py-2 font-medium text-sm ${activeTab === 'display' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+          className={`px-4 py-2 font-medium text-sm ${activeTab === 'display' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
           onClick={() => setActiveTab('display')}
         >
           Display
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${activeTab === 'categories' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+          className={`px-4 py-2 font-medium text-sm ${activeTab === 'categories' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
           onClick={() => setActiveTab('categories')}
         >
           Categories
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${activeTab === 'account' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+          className={`px-4 py-2 font-medium text-sm ${activeTab === 'account' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
           onClick={() => setActiveTab('account')}
         >
           Account
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${activeTab === 'data' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+          className={`px-4 py-2 font-medium text-sm ${activeTab === 'data' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
           onClick={() => setActiveTab('data')}
         >
           Data
         </button>
         {isAdmin && (
           <button
-            className={`px-4 py-2 font-medium text-sm ${activeTab === 'admin' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+            className={`px-4 py-2 font-medium text-sm ${activeTab === 'admin' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
             onClick={() => setActiveTab('admin')}
           >
             Admin
@@ -289,11 +290,11 @@ export function SettingsModal({ isOpen, onClose }) {
         {/* Display Settings Tab */}
         {activeTab === 'display' && (
           <section>
-            <h3 className="text-sm font-medium mb-2">Display Settings</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Display Settings</h3>
             
             {/* Text Size */}
             <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-600 mb-2">Text Size</h4>
+              <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Text Size</h4>
               <div className="flex items-center space-x-4">
                 <label className="inline-flex items-center cursor-pointer">
                   <input 
@@ -341,7 +342,7 @@ export function SettingsModal({ isOpen, onClose }) {
             
             {/* Theme Setting */}
             <div>
-              <h4 className="text-xs font-medium text-gray-600 mb-2">Color Theme</h4>
+              <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Color Theme</h4>
               <div className="flex items-center space-x-4">
                 <label className="inline-flex items-center cursor-pointer">
                   <input 
@@ -380,10 +381,10 @@ export function SettingsModal({ isOpen, onClose }) {
         {/* Category Management Tab */}
         {activeTab === 'categories' && (
           <section>
-            <h3 className="text-sm font-medium mb-2">Category Management</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Category Management</h3>
             
             <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-600 mb-2">
+              <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
                 Your Categories (Max {MAX_USER_CATEGORIES})
               </h4>
               
@@ -482,7 +483,7 @@ export function SettingsModal({ isOpen, onClose }) {
             </div>
             
             <div className={`${userCategories.length >= MAX_USER_CATEGORIES ? 'opacity-50' : ''}`}>
-              <h4 className="text-xs font-medium text-gray-600 mb-2">Add New Category</h4>
+              <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Add New Category</h4>
               <div className="flex gap-2">
                 <Input
                   value={newCategoryName}
@@ -518,43 +519,31 @@ export function SettingsModal({ isOpen, onClose }) {
         {/* Account Settings Tab */}
         {activeTab === 'account' && (
           <section>
-            <h3 className="text-sm font-medium mb-2">Account Settings</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Account Settings</h3>
             
             {/* User Info */}
             <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-600 mb-2">
+              <h4 className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">
                 Your Account
               </h4>
-              <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm">
-                    <span className="font-semibold">Email:</span> {user?.email}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-semibold">Name:</span> {user?.firstName || ''} {user?.lastName || ''}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-semibold">Account Type:</span> {user?.isAdmin ? 'Administrator' : 'User'}
-                  </p>
-                </div>
-              </div>
+              <AccountInfo user={user} />
             </div>
             
             {/* Change Password */}
             <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-600 mb-2">
+              <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
                 Change Password
               </h4>
               
               {passwordError && (
-                <div className="mb-3 p-2 bg-red-100 border border-red-300 text-red-800 rounded-md text-xs">
+                <div className="mb-3 p-2 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 rounded-md text-xs">
                   {passwordError}
                 </div>
               )}
               
               <div className="space-y-3">
                 <FormGroup>
-                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Label htmlFor="currentPassword" className="text-gray-700 dark:text-gray-300">Current Password</Label>
                   <Input
                     id="currentPassword"
                     name="currentPassword"
@@ -562,11 +551,12 @@ export function SettingsModal({ isOpen, onClose }) {
                     value={passwordData.currentPassword}
                     onChange={handlePasswordInputChange}
                     placeholder="Enter your current password"
+                    className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                   />
                 </FormGroup>
                 
                 <FormGroup>
-                  <Label htmlFor="newPassword">New Password</Label>
+                  <Label htmlFor="newPassword" className="text-gray-700 dark:text-gray-300">New Password</Label>
                   <Input
                     id="newPassword"
                     name="newPassword"
@@ -574,11 +564,12 @@ export function SettingsModal({ isOpen, onClose }) {
                     value={passwordData.newPassword}
                     onChange={handlePasswordInputChange}
                     placeholder="Enter new password"
+                    className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                   />
                 </FormGroup>
                 
                 <FormGroup>
-                  <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                  <Label htmlFor="confirmNewPassword" className="text-gray-700 dark:text-gray-300">Confirm New Password</Label>
                   <Input
                     id="confirmNewPassword"
                     name="confirmNewPassword"
@@ -586,6 +577,7 @@ export function SettingsModal({ isOpen, onClose }) {
                     value={passwordData.confirmNewPassword}
                     onChange={handlePasswordInputChange}
                     placeholder="Confirm new password"
+                    className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                   />
                 </FormGroup>
                 
@@ -603,6 +595,7 @@ export function SettingsModal({ isOpen, onClose }) {
               <Button
                 variant="secondary"
                 onClick={handleLogout}
+                className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
               >
                 Log Out
               </Button>
@@ -613,7 +606,7 @@ export function SettingsModal({ isOpen, onClose }) {
         {/* Data Management Tab */}
         {activeTab === 'data' && (
           <section>
-            <h3 className="text-sm font-medium mb-2">Data Management</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Data Management</h3>
             <p className="text-xs text-gray-600 mb-3">
               Export your prompts or import a pack.
             </p>
@@ -662,7 +655,7 @@ export function SettingsModal({ isOpen, onClose }) {
         {/* Admin Tab - Only shown for admin users */}
         {activeTab === 'admin' && isAdmin && (
           <section>
-            <h3 className="text-sm font-medium mb-2">Admin Panel</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Admin Panel</h3>
             <p className="text-xs text-gray-600 mb-3">
               User management and system settings. 
             </p>

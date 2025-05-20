@@ -70,16 +70,16 @@ export function Modal({
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 overflow-auto bg-black bg-opacity-70 flex items-center justify-center p-4 z-[50000] modal-overlay">
       <div 
         ref={modalRef}
-        className={`bg-white rounded-lg shadow-xl w-full ${maxWidths[maxWidth]} animate-modal-in`}
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full ${maxWidths[maxWidth]} animate-modal-in relative z-[50001] modal-container dark:text-gray-200`}
       >
-        <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-medium">{title}</h2>
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200">{title}</h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded-full"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full"
             aria-label="Close"
           >
             <svg 
@@ -99,12 +99,12 @@ export function Modal({
           </button>
         </div>
         
-        <div className="p-4 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 max-h-[calc(90vh-120px)] overflow-y-auto">
           {children}
         </div>
         
         {footer && (
-          <div className="p-3 border-t border-gray-200 flex justify-end gap-2">
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
             {footer}
           </div>
         )}

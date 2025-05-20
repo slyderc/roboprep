@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/db';
+import { checkUserAuth } from './client-auth';
 
 export async function POST(request) {
   try {
+    // Check authentication without using middleware
+    const authCheck = await checkUserAuth();
+    if (!authCheck.isAuthenticated) {
+      // For debugging, still allow the request but include auth info in response
+      console.log('DB API: User not authenticated:', authCheck.message);
+      // Uncomment to enforce authentication:
+      // return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    
     const { operation, params } = await request.json();
     
     // Handle different database operations

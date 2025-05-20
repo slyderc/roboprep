@@ -135,9 +135,9 @@ body {
 input, 
 select, 
 textarea {
-  background-color: var(--surface-color);
-  color: var(--text-color);
-  border-color: var(--border-color);
+  background-color: var(--surface-color) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
 }
 
 /* Tag styling for filters - light mode */
@@ -344,6 +344,8 @@ span.bg-blue-100 {
   transition: background-color 0.3s ease, border-color 0.3s ease !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
   padding: 0.75rem !important;
+  position: relative;
+  z-index: 5; /* Much lower than modal z-index (9999-10000) */
 }
 
 .tag-filter-heading {
@@ -379,4 +381,46 @@ span.bg-blue-100 {
   .container {
     max-width: 1200px;
   }
+}
+
+/* Modal styling - Force on top of everything */
+.modal-overlay {
+  z-index: 50000 !important;
+  position: fixed !important;
+  inset: 0 !important;
+  overflow: auto;
+}
+
+.modal-container {
+  z-index: 50001 !important;
+  position: relative !important;
+  margin: 2rem auto;
+}
+
+/* Ensure modals are above all other content */
+#root, #__next {
+  isolation: isolate;
+}
+
+/* Remove the forced background colors - let Tailwind handle it */
+
+/* Ensure the prompt list header is below modals */
+.prompt-list-header {
+  position: relative;
+  isolation: isolate;
+  z-index: 5 !important;
+}
+
+/* Force account info text to be visible */
+.dark-theme .account-info-container {
+  background-color: #121212 !important;
+  border: 1px solid #4a4a4a !important;
+}
+
+.dark-theme .account-info-container p {
+  color: #e0e0e0 !important;
+}
+
+.dark-theme .account-info-container span {
+  color: #90caf9 !important;
 }

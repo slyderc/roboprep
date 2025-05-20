@@ -66,14 +66,14 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
   return (
     <div 
       className={`
-        bg-white rounded-md border border-gray-200 p-3 hover:shadow-md shadow-sm mb-3 transition-shadow duration-200
+        bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md shadow-sm mb-3 transition-shadow duration-200
         ${hasVariables ? 'clickable-prompt cursor-pointer' : ''}
       `}
       onClick={hasVariables ? () => onCopy(prompt, () => setShowCopyToast(true)) : undefined}
       title={hasVariables ? "Click to replace variables and copy" : prompt.title}
     >
       <div className="flex justify-between items-start">
-        <h3 className="text-prompt-title text-blue-600 font-semibold mb-2 inline-block py-1 px-3 bg-blue-100 rounded-md">
+        <h3 className="text-prompt-title text-blue-600 dark:text-blue-400 font-semibold mb-2 inline-block py-1 px-3 bg-blue-100 dark:bg-blue-900/40 rounded-md">
           {prompt.title}
         </h3>
         
@@ -92,7 +92,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
         )}
       </div>
       
-      <p className="text-prompt-desc text-gray-600 mb-2 ml-1">
+      <p className="text-prompt-desc text-gray-600 dark:text-gray-300 mb-2 ml-1">
         {prompt.description || 'No description available.'}
       </p>
       
@@ -101,7 +101,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           {prompt.tags.map((tag, index) => (
             <span
               key={index}
-              className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-prompt-tag theme-aware-tag"
+              className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded-full text-prompt-tag theme-aware-tag"
             >
               {tag}
             </span>
@@ -109,10 +109,10 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
         </div>
       )}
       
-      <div className="flex items-center gap-1 mt-2 border-t pt-2 border-gray-100">
+      <div className="flex items-center gap-1 mt-2 border-t pt-2 border-gray-100 dark:border-gray-700">
         {/* Toast notification */}
         {showCopyToast && (
-          <div className="bg-green-500 text-white text-xs py-1 px-2 rounded-md animate-fadeIn absolute top-2 left-1/2 transform -translate-x-1/2">
+          <div className="bg-green-500 dark:bg-green-600 text-white text-xs py-1 px-2 rounded-md animate-fadeIn absolute top-2 left-1/2 transform -translate-x-1/2">
             Copied to clipboard!
           </div>
         )}
@@ -124,7 +124,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
               onClick={handleDeleteClick}
               title="Delete Prompt"
               variant="danger"
-              className="px-1 hover:bg-red-100 rounded"
+              className="px-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
               icon={
                 <svg 
                   className="w-4 h-4" 
@@ -146,7 +146,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
         </div>
         
         {/* Visual separator when delete button is shown */}
-        {prompt.isUserCreated && <div className="border-r border-gray-200 h-6 mx-2"></div>}
+        {prompt.isUserCreated && <div className="border-r border-gray-200 dark:border-gray-700 h-6 mx-2"></div>}
         
         <div className="flex items-center space-x-1 ml-auto flex-grow justify-end">
           

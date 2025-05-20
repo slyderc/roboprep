@@ -185,9 +185,9 @@ export function NewPromptModal({ isOpen, onClose, promptToEdit = null }) {
           <FormGroup>
             <div className="flex items-center justify-between">
               <Label htmlFor="promptDescription">
-                Description <span className="text-gray-500">(Optional)</span>
+                Description <span className="text-gray-500 dark:text-gray-400">(Optional)</span>
               </Label>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {charCount}/200
               </span>
             </div>
@@ -218,17 +218,17 @@ export function NewPromptModal({ isOpen, onClose, promptToEdit = null }) {
           </FormGroup>
           
           <FormGroup>
-            <Label>Tags <span className="text-gray-500">(Optional)</span></Label>
-            <div className="flex flex-wrap gap-2 mb-2 p-2 border border-gray-200 rounded-md min-h-[60px]">
+            <Label>Tags <span className="text-gray-500 dark:text-gray-400">(Optional)</span></Label>
+            <div className="flex flex-wrap gap-2 mb-2 p-2 border border-gray-200 dark:border-gray-700 rounded-md min-h-[60px] dark:bg-gray-800">
               {tags.map((tag, index) => (
                 <span 
                   key={index}
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
                 >
                   {tag}
                   <button
                     type="button"
-                    className="ml-1 text-blue-400 hover:text-blue-600"
+                    className="ml-1 text-blue-400 dark:text-blue-300 hover:text-blue-600 dark:hover:text-blue-200"
                     onClick={() => handleRemoveTag(tag)}
                   >
                     ×
@@ -236,7 +236,7 @@ export function NewPromptModal({ isOpen, onClose, promptToEdit = null }) {
                 </span>
               ))}
               {tags.length === 0 && (
-                <span className="text-gray-400 text-sm italic">No tags added yet</span>
+                <span className="text-gray-400 dark:text-gray-500 text-sm italic">No tags added yet</span>
               )}
             </div>
             <div className="flex gap-2">
@@ -271,7 +271,7 @@ export function NewPromptModal({ isOpen, onClose, promptToEdit = null }) {
             className="font-mono text-sm resize-y h-36 min-h-[9rem]"
             required
           />
-          <div className="text-xs text-gray-500 mt-1 text-left">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-left">
             <span>⟺ Drag bottom edge to resize</span>
           </div>
         </FormGroup>

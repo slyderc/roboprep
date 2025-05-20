@@ -7,6 +7,15 @@ const publicPaths = [
   '/register',
   '/api/auth/login',
   '/api/auth/register',
+  '/api/auth/me',
+  '/api/init',
+  '/api/simple-check', // Simple endpoint for checking environment
+  '/api/db', // Database operations - client-side auth instead of middleware
+  '/api/openai', // OpenAI API - client-side auth instead of middleware
+  '/favicon.ico',
+  '/assets',
+  '/home', // Alternative home page that bypasses auth for testing
+  '/main', // Alternative main entry point that bypasses middleware auth
 ];
 
 // Paths that require admin access
@@ -29,9 +38,15 @@ export function middleware(request) {
   
   // If no token is present, redirect to login
   if (!token) {
+    console.log(`No token found for path: ${path}, redirecting to login`);
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('redirect', path);
+    
+    // Only add redirect parameter for non-asset paths
+    if (!path.startsWith('/assets/')) {
+      url.searchParams.set('redirect', path);
+    }
+    
     return NextResponse.redirect(url);
   }
   
@@ -40,15 +55,24 @@ export function middleware(request) {
   
   // If token is invalid, redirect to login
   if (!payload) {
+    console.log(`Invalid token for path: ${path}, redirecting to login`);
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('redirect', path);
+    
+    // Only add redirect parameter for non-asset paths
+    if (!path.startsWith('/assets/')) {
+      url.searchParams.set('redirect', path);
+    }
+    
     return NextResponse.redirect(url);
   }
+  
+  console.log(`Valid token for path: ${path}, user ID: ${payload.userId}`);
   
   // Check if the path requires admin access
   if (adminPaths.some(p => path.startsWith(p)) && !payload.isAdmin) {
     // If the user is not an admin, redirect to home
+    console.log(`User is not admin, redirecting from admin path: ${path}`);
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);

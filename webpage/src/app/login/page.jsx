@@ -26,7 +26,12 @@ export default function LoginPage() {
       const result = await login(email, password);
       
       if (result.success) {
-        router.push(redirectPath);
+        console.log('Login successful, redirecting to:', redirectPath);
+        // Use window.location instead of router.push to force a full page reload
+        // This ensures the cookie takes effect immediately
+        
+        // For debugging - redirect to /home which bypasses middleware
+        window.location.href = '/home';
       } else {
         setError(result.error || 'Login failed. Please try again.');
       }

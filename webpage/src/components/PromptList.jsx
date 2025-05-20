@@ -4,7 +4,7 @@ import { PromptCard } from './PromptCard';
 import { VariableModal } from './VariableModal';
 import { NewPromptModal } from './NewPromptModal';
 import { TagFilter } from './TagFilter';
-import { Button } from './ui/Button';
+import { Button, IconButton } from './ui/Button';
 
 export function PromptList({ onSubmitToAi, onViewResponses }) {
   const { 
@@ -178,12 +178,36 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
   
   return (
     <div className="py-4 h-full">
-      <div className="sticky top-0 bg-gray-50 pt-1 pb-3 z-10 dark:bg-background-color">
+      <div className="sticky top-0 bg-gray-50 pt-1 pb-3 z-[5] dark:bg-background-color prompt-list-header">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-medium text-gray-800">{activeCategoryName}</h2>
-          <span className="bg-gray-200 px-2 py-1 rounded-full font-medium count-indicator">
-            {promptsWithStatus.length}
-          </span>
+          <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">{activeCategoryName}</h2>
+          <div className="flex items-center gap-2">
+            <IconButton
+              title="New Prompt"
+              onClick={() => setIsEditModalOpen(true)}
+              variant="primary"
+              className="bg-blue-300 text-blue-700 rounded-full p-1 hover:bg-blue-400 hover:text-blue-800 hover:shadow-md hover:scale-110 transition-all duration-200 dark:bg-blue-300 dark:text-blue-700 dark:hover:bg-blue-400 dark:hover:text-blue-800 shadow-sm transform"
+              icon={
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              }
+            />
+            <span className="bg-gray-200 dark:bg-gray-700 dark:text-gray-200 px-2 py-1 rounded-full font-medium count-indicator">
+              {promptsWithStatus.length}
+            </span>
+          </div>
         </div>
         
         {/* Tag Filter - Only show if there are tags in the current category */}

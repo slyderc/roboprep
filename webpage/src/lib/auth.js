@@ -50,8 +50,14 @@ export function generateToken(user) {
  */
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    console.log(`Verifying token starting with: ${token.substring(0, 20)}...`);
+    console.log(`Using JWT_SECRET: ${JWT_SECRET.substring(0, 10)}...`);
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('Token verified successfully:', decoded);
+    return decoded;
   } catch (error) {
+    console.error('Token verification failed:', error.message);
     return null;
   }
 }
@@ -83,11 +89,11 @@ export async function createSession(user) {
  */
 export function setAuthCookie(session) {
   const cookieOptions = {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
+    secure: process.env.COOKIE_SECURE === 'true',
+    httpOnly: process.env.COOKIE_HTTP_ONLY === 'true',
     expires: session.expiresAt,
     path: '/',
-    sameSite: 'strict',
+    sameSite: 'lax', // Changed from strict to lax to allow redirects
   };
 
   cookies().set(COOKIE_NAME, session.token, cookieOptions);
@@ -109,14 +115,18 @@ export async function getCurrentUser() {
     const token = cookies().get(COOKIE_NAME)?.value;
     
     if (!token) {
+      console.log('No auth token found in cookies');
       return null;
     }
     
     const payload = verifyToken(token);
     
     if (!payload) {
+      console.log('Invalid token, verification failed');
       return null;
     }
+    
+    console.log(`Token verified for user ID: ${payload.userId}`);
     
     // Check if session exists and is valid
     const session = await prisma.session.findFirst({
@@ -132,9 +142,11 @@ export async function getCurrentUser() {
     });
     
     if (!session) {
+      console.log('No valid session found for token');
       return null;
     }
     
+    console.log(`Found valid session for user: ${session.user.email}`);
     return session.user;
   } catch (error) {
     console.error('Error getting current user:', error);

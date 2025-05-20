@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
-import { clearAuthCookie } from '@/lib/auth';
 
 export async function POST(request) {
   try {
@@ -17,12 +16,18 @@ export async function POST(request) {
       });
     }
 
-    // Clear auth cookie
-    clearAuthCookie();
-
-    return NextResponse.json({
+    // Create a response with success message
+    const response = NextResponse.json({
       message: 'Logout successful',
     });
+
+    // Clear cookie by setting an expired date
+    response.cookies.set(cookieName, '', {
+      expires: new Date(0),
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(

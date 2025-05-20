@@ -63,9 +63,9 @@ export function TagFilter({ prompts, onFilterChange }) {
   if (allTags.length <= 1) return null;
   
   return (
-    <div className="mb-3 bg-white p-3 rounded-md border border-gray-200 shadow-sm dark:bg-surface-color dark:border-border-color tag-filter-panel">
+    <div className="mb-3 bg-white p-3 rounded-md border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 tag-filter-panel">
       <div className="flex items-center justify-between mb-2">
-        <div className="font-medium text-gray-700 text-sm dark:text-text-color tag-filter-heading">
+        <div className="font-medium text-gray-700 text-sm dark:text-gray-200 tag-filter-heading">
           FILTER BY TAGS
         </div>
         <Button
@@ -84,8 +84,8 @@ export function TagFilter({ prompts, onFilterChange }) {
             key={tag}
             onClick={() => toggleTag(tag)}
             className={selectedTags.includes(tag)
-              ? "bg-blue-100 text-blue-800 rounded-full text-prompt-tag theme-aware-tag hover:bg-blue-200" // Active filter - exactly like prompt card tag
-              : "inactive-tag rounded-full text-prompt-tag theme-aware-tag hover:bg-gray-400 filter-tag" // Inactive filter with consistent hover behavior
+              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full text-prompt-tag theme-aware-tag hover:bg-blue-200 dark:hover:bg-blue-800" // Active filter - exactly like prompt card tag
+              : "inactive-tag rounded-full text-prompt-tag theme-aware-tag hover:bg-gray-400 dark:hover:bg-gray-700 filter-tag" // Inactive filter with consistent hover behavior
             }
           >
             {tag}

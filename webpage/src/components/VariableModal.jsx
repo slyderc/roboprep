@@ -184,7 +184,7 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
         </>
       }
     >
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
         Enter replacement text for the variables in "<span className="font-semibold">{prompt.title}</span>".
       </p>
       
@@ -236,9 +236,9 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
       </form>
       
       {showPreview && (
-        <div className="mt-5 p-3 border rounded bg-gray-50 max-h-48 overflow-y-auto">
-          <p className="text-xs text-gray-500 mb-2 font-semibold">Preview:</p>
-          <pre className="text-sm whitespace-pre-wrap">
+        <div className="mt-5 p-3 border dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 max-h-48 overflow-y-auto">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-semibold">Preview:</p>
+          <pre className="text-sm whitespace-pre-wrap dark:text-gray-200">
             {replaceVariables(normalizedPromptText, replacements)}
           </pre>
         </div>
