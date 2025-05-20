@@ -153,13 +153,16 @@ The application includes a tag-based filtering system that allows users to quick
 The application uses a SQLite database managed through Prisma ORM. See [DATABASE.md](DATABASE.md) for detailed documentation on the database schema and implementation.
 
 Key tables include:
+- `User`: Stores user accounts with authentication data
+- `Session`: Manages user authentication sessions
 - `Prompt`: Stores both core and user-created prompts
 - `Category`: Stores prompt categories
 - `Tag`: Stores tags associated with prompts
-- `Response`: Stores AI-generated responses
-- `Favorite`: Tracks favorited prompts
-- `RecentlyUsed`: Tracks recently used prompts
-- `Setting`: Stores application settings
+- `Response`: Stores AI-generated responses with user attribution
+- `UserFavorite`: Tracks user-specific favorited prompts
+- `UserRecentlyUsed`: Tracks user-specific recently used prompts
+- `UserSetting`: Stores user-specific application settings
+- `Setting`: Stores global application settings (legacy)
 
 #### Storage API
 The application provides a seamless interface for database operations that maintains compatibility with the previous localStorage-based implementation:
@@ -192,7 +195,7 @@ const storage = {
 The web application provides integration with OpenAI's GPT-4o model through a secure API:
 
 #### API Configuration
-Environment variables control the OpenAI integration and database settings:
+Environment variables control the OpenAI integration, database settings, and authentication:
 ```
 # OpenAI API settings
 NEXT_PUBLIC_OPENAI_API_KEY=your_api_key_here
@@ -203,7 +206,14 @@ NEXT_PUBLIC_OPENAI_TEMPERATURE=0.7
 # Database settings
 DATABASE_URL="file:../roboprep.db"
 DATABASE_POOL_SIZE=5
-DATABASE_INIT_VERSION="1.0.0"
+DATABASE_INIT_VERSION="2.0.0"
+
+# Authentication settings
+JWT_SECRET="your-secure-random-secret-key"
+JWT_EXPIRATION="12h"
+COOKIE_NAME="robo_auth"
+COOKIE_SECURE=true
+COOKIE_HTTP_ONLY=true
 ```
 
 #### API Client
@@ -301,6 +311,7 @@ AI responses are stored with the following structure:
 {
   "id": "response_1234567890",           // Unique identifier
   "promptId": "associated_prompt_id",    // ID of the prompt that generated this response
+  "userId": "user_id",                   // ID of the user who created this response
   "responseText": "The API response text", // The content returned by OpenAI
   "modelUsed": "gpt-4o",                 // Model that generated the response
   "promptTokens": 150,                   // Number of tokens in the prompt
@@ -310,12 +321,19 @@ AI responses are stored with the following structure:
   "variablesUsed": {                     // Record of variables used in this prompt
     "variable_name": "value"
   },
-  "lastEdited": "2023-05-16T10:15:00Z"   // Timestamp of last edit (if edited)
+  "lastEdited": "2023-05-16T10:15:00Z",  // Timestamp of last edit (if edited)
+  "user": {                              // User information (included in responses from the API)
+    "firstName": "John",                 // First name of the user who created the response
+    "lastName": "Doe"                    // Last name of the user who created the response
+  }
 }
 ```
 
 ## Latest Updates
 
+- **Multi-User Authentication**: Added user account system with login/register functionality
+- **User Attribution**: Responses now track and display which user created them
+- **Admin Dashboard**: Added admin interface for user management and database statistics
 - **Tag Filtering**: Added ability to filter prompts by tags, using AND logic for multiple tag selection
 - **Smart Category Organization**: Reorganized the categories panel with prioritized essential categories
 - **UI Improvements**: Enhanced styling consistency between light and dark themes
@@ -333,11 +351,12 @@ AI responses are stored with the following structure:
 ### Web Application
 1. Navigate to the `/webpage` directory
 2. Install dependencies with `npm install`
-3. Create a `.env.local` file with your OpenAI API key and database settings
+3. Create a `.env.local` file with your OpenAI API key, database settings, and authentication settings (see API Configuration section above)
 4. Initialize the database with `npx prisma migrate dev`
 5. Run the development server with `npm run dev`
 6. Open your browser to `http://localhost:3000`
-7. For production build, use `npm run build`
+7. Log in with the default admin account (email: admin@example.com, password: RoboPrepMe) or register a new account
+8. For production build, use `npm run build` and deploy with `npm start`
 
 ### Database Management
 - View the database schema in `prisma/schema.prisma`
