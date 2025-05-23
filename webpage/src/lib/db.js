@@ -121,10 +121,8 @@ async function createDefaultAdminUser() {
       },
     });
     
-    console.log('Created default admin user');
-    
     // Also create a test user
-    const testUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: 'test@example.com',
         password: hashedPassword,
@@ -133,8 +131,6 @@ async function createDefaultAdminUser() {
         isAdmin: false,
       },
     });
-    
-    console.log('Created test user (email: test@example.com, password: RoboPrepMe)');
     
     return adminUser.id;
   } catch (error) {
@@ -192,7 +188,6 @@ async function createDefaultCategories() {
     { id: 'social-media', name: 'Social Media', isUserCreated: false },
   ];
 
-  console.log(`Creating ${defaultCategories.length} default categories`);
   
   for (const category of defaultCategories) {
     await prisma.category.create({
@@ -205,7 +200,6 @@ async function createDefaultCategories() {
  * Create default prompts in the database
  */
 async function createDefaultPrompts() {
-  console.log(`Creating ${defaultPrompts.length} default prompts`);
   
   for (const prompt of defaultPrompts) {
     // Extract tags
@@ -260,7 +254,6 @@ async function createDefaultSettings() {
     { key: 'theme', value: JSON.stringify('light') }
   ];
 
-  console.log(`Creating ${defaultSettings.length} default settings`);
   
   for (const setting of defaultSettings) {
     await prisma.setting.upsert({
@@ -268,6 +261,70 @@ async function createDefaultSettings() {
       update: { value: setting.value },
       create: setting
     });
+  }
+}
+
+/**
+ * Gets database statistics including counts of records in various tables
+ * @returns {Promise<Object>} Object containing counts of records in each table
+ */
+export async function getDbStats() {
+  try {
+    const [
+      promptCount,
+      userPromptCount,
+      corePromptCount,
+      categoryCount,
+      tagCount,
+      responseCount,
+      userFavoriteCount,
+      userRecentlyUsedCount,
+      userCount,
+      settingCount,
+      userSettingCount
+    ] = await Promise.all([
+      prisma.prompt.count(),
+      prisma.prompt.count({ where: { isUserCreated: true } }),
+      prisma.prompt.count({ where: { isUserCreated: false } }),
+      prisma.category.count(),
+      prisma.tag.count(),
+      prisma.response.count(),
+      prisma.userFavorite.count(),
+      prisma.userRecentlyUsed.count(),
+      prisma.user.count(),
+      prisma.setting.count(),
+      prisma.userSetting.count()
+    ]);
+
+    return {
+      promptCount,
+      userPromptCount,
+      corePromptCount,
+      categoryCount,
+      tagCount,
+      responseCount,
+      userFavoriteCount,
+      userRecentlyUsedCount,
+      userCount,
+      settingCount,
+      userSettingCount
+    };
+  } catch (error) {
+    console.error('Error getting DB stats:', error);
+    return {
+      error: error.message,
+      promptCount: 0,
+      userPromptCount: 0,
+      corePromptCount: 0,
+      categoryCount: 0,
+      tagCount: 0,
+      responseCount: 0,
+      userFavoriteCount: 0,
+      userRecentlyUsedCount: 0,
+      userCount: 0,
+      settingCount: 0,
+      userSettingCount: 0
+    };
   }
 }
 

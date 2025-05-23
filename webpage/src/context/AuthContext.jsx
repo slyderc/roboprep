@@ -15,15 +15,18 @@ export function AuthProvider({ children }) {
 
   // Fetch current user on mount
   useEffect(() => {
-    async function loadUserFromSession() {
+    async function loadUserFromSession(showLoading = true) {
       try {
-        setLoading(true);
+        if (showLoading) {
+          setLoading(true);
+        }
         
         // Debug cookie information
         console.log('AuthContext: Current cookies:', document.cookie);
         
         const response = await fetch('/api/auth/me', {
-          credentials: 'include' // Important: include cookies with the request
+          credentials: 'include', // Important: include cookies with the request
+          cache: 'no-store' // Prevent caching of this request
         });
         
         console.log('AuthContext: /api/auth/me response status:', response.status);
@@ -41,11 +44,19 @@ export function AuthProvider({ children }) {
         console.error('Failed to load user session:', error);
         setUser(null);
       } finally {
-        setLoading(false);
+        if (showLoading) {
+          setLoading(false);
+        }
       }
     }
 
-    loadUserFromSession();
+    // Initial load with loading indicator
+    loadUserFromSession(true);
+    
+    // We're removing the automatic session check to prevent page refreshes
+    // If needed in the future, we can add a background check that doesn't trigger loading state:
+    // const intervalId = setInterval(() => loadUserFromSession(false), 300000); // Check silently every 5 minutes
+    // return () => clearInterval(intervalId);
   }, []);
 
   // Register a new user
@@ -126,7 +137,11 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         setUser(null);
         toast.success('Logout successful');
-        router.push('/login');
+        // Use window.location for a full page reload after a short delay
+        // to allow the toast message to be seen
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 500);
         return { success: true };
       } else {
         const data = await response.json();

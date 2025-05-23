@@ -52,7 +52,8 @@ export default function RegisterPage() {
       );
       
       if (result.success) {
-        router.push('/');
+        // Use window.location for a full page reload to ensure cookie is set
+        window.location.href = '/main';
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }

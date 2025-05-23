@@ -14,8 +14,8 @@ const publicPaths = [
   '/api/openai', // OpenAI API - client-side auth instead of middleware
   '/favicon.ico',
   '/assets',
-  '/home', // Alternative home page that bypasses auth for testing
-  '/main', // Alternative main entry point that bypasses middleware auth
+  // '/home' path removed - no longer bypassing auth
+  // '/main' stays protected now, requiring authentication
 ];
 
 // Paths that require admin access
@@ -50,27 +50,29 @@ export function middleware(request) {
     return NextResponse.redirect(url);
   }
   
-  // Verify the token
-  const payload = verifyToken(token);
+  // Don't verify token in middleware - Edge runtime cannot use crypto
+  // Just check token existence - actual verification will happen in the API route
   
-  // If token is invalid, redirect to login
-  if (!payload) {
-    console.log(`Invalid token for path: ${path}, redirecting to login`);
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    
-    // Only add redirect parameter for non-asset paths
-    if (!path.startsWith('/assets/')) {
-      url.searchParams.set('redirect', path);
+  // Assume token is valid if it exists
+  // We'll let the API routes perform full verification
+  console.log(`Token exists for path: ${path}, allowing access`);
+  
+  // For admin paths, we need to check if user is admin
+  // Extract basic info from token without full verification
+  let isAdmin = false;
+  try {
+    // Basic token parsing (not verification)
+    const tokenParts = token.split('.');
+    if (tokenParts.length === 3) {
+      const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+      isAdmin = payload.isAdmin || false;
     }
-    
-    return NextResponse.redirect(url);
+  } catch (error) {
+    console.error('Error parsing token:', error);
   }
   
-  console.log(`Valid token for path: ${path}, user ID: ${payload.userId}`);
-  
   // Check if the path requires admin access
-  if (adminPaths.some(p => path.startsWith(p)) && !payload.isAdmin) {
+  if (adminPaths.some(p => path.startsWith(p)) && !isAdmin) {
     // If the user is not an admin, redirect to home
     console.log(`User is not admin, redirecting from admin path: ${path}`);
     const url = request.nextUrl.clone();
