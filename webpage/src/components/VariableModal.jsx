@@ -121,23 +121,30 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
       isOpen={isOpen}
       onClose={onClose}
       title="Customize Prompt"
+      maxWidth="lg"
       footer={
-        <>
+        <div className="flex justify-between w-full">
           <Button 
-            variant="secondary" 
+            className="bg-red-600 hover:bg-red-700 text-white"
             onClick={onClose}
           >
             Cancel
           </Button>
-          <Button 
-            variant="secondary" 
-            onClick={handlePreview}
-          >
-            Preview
-          </Button>
           <div className="flex gap-2">
             <Button 
-              variant="primary"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handlePreview}
+              icon={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              }
+            >
+              Preview
+            </Button>
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700 text-white"
               onClick={handleCopy}
               icon={
                 <svg 
@@ -160,7 +167,7 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
             </Button>
             <Button 
               onClick={handleSubmitToAi}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
               icon={
                 <svg 
                   className="w-4 h-4" 
@@ -181,7 +188,7 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
               Submit to AI
             </Button>
           </div>
-        </>
+        </div>
       }
     >
       <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">

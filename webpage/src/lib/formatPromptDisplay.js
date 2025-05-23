@@ -46,20 +46,23 @@ export function getPlaceholderExample(variable) {
   // Return contextual examples based on variable name (case-insensitive)
   const lowerVar = variable.toLowerCase();
   const examples = {
-    'artist': 'The Rolling Stones', 'artist_name': 'The Rolling Stones',
-    'song': 'Paint It Black', 'song_title': 'Paint It Black',
-    'album': 'Aftermath', 'album_name': 'Aftermath',
-    'year': '1985', 'release_year': '1978',
-    'genre': '80s, Rock, Top 40, etc.',
+    'artist': 'Urban Heat', 'artist_name': 'Urban Heat',
+    'band': 'Depeche Mode', 'band_name': 'Depeche Mode',
+    'song': 'Shake The Disease', 'song_title': 'Shake The Disease',
+    'album': 'Violator', 'album_name': 'Violator',
+    'year': '2018', 'release_year': '2025',
+    'date': '5/22/25, Friday May 23rd, 5/22, etc.',
+    'show_date': '5/22/25, Friday May 23rd, 5/22, etc.',
+    'genre': 'goth, synth-wave, indie-rock, etc.',
     'weather': 'Sunny, 75°F', 'condition': 'clear skies',
     'guest': 'Jane Doe', 'guest_name': 'Jane Doe',
-    'station': 'WXYZ', 'station_call': 'WXYZ',
-    'show': 'Morning Drive', 'show_name': 'Morning Drive',
+    'station': 'KEXP', 'station_call': 'KEXP',
+    'show': 'Sounds Like', 'show_name': 'Sounds Like',
     'time': '15 seconds', 'day': 'Friday',
-    'location': 'Downtown', 'city': 'New York',
+    'location': 'Downtown', 'city': 'Seattle',
     'name': 'Listener Name', 'caller': 'Caller Name',
-    'topic': 'Your Topic', 'event': 'Summer Concert',
-    'music_genre': '80s, Rock, Top 40, etc.', 'theme_emotion': 'Happy, Sad, Freedom, etc.'
+    'topic': 'short topic or description', 'event': 'Summer Concert',
+    'music_genre': 'goth, synth-wave, indie-rock, etc.', 'theme_emotion': 'happy, sad, Christmas, etc.'
   };
   
   // Look for partial matches in the variable name

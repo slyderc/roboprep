@@ -152,20 +152,20 @@ export function NewPromptModal({ isOpen, onClose, promptToEdit = null }) {
       title={isEditing ? 'Edit Prompt' : 'New Prompt'}
       maxWidth="lg"
       footer={
-        <>
+        <div className="flex justify-between w-full">
           <Button 
-            variant="secondary" 
+            className="bg-red-600 hover:bg-red-700 text-white"
             onClick={onClose}
           >
             Cancel
           </Button>
           <Button 
-            variant="primary"
+            className="bg-green-600 hover:bg-green-700 text-white"
             onClick={handleSave}
           >
             {isEditing ? 'Save Changes' : 'Create Prompt'}
           </Button>
-        </>
+        </div>
       }
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

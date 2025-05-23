@@ -66,11 +66,11 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
   return (
     <div 
       className={`
-        bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md shadow-sm mb-3 transition-shadow duration-200
-        ${hasVariables ? 'clickable-prompt cursor-pointer' : ''}
+        bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md shadow-sm mb-3 transition-shadow duration-200 relative
+        ${hasVariables ? 'clickable-prompt cursor-pointer' : 'opacity-95'}
       `}
       onClick={hasVariables ? () => onCopy(prompt, () => setShowCopyToast(true)) : undefined}
-      title={hasVariables ? "Click to replace variables and copy" : prompt.title}
+      title={hasVariables ? "Click to replace variables and copy" : "This prompt has no variables - use the action buttons below"}
     >
       <div className="flex justify-between items-start">
         <h3 className="text-prompt-title text-blue-600 dark:text-blue-400 font-semibold mb-2 inline-block py-1 px-3 bg-blue-100 dark:bg-blue-900/40 rounded-md">
@@ -95,6 +95,15 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
       <p className="text-prompt-desc text-gray-600 dark:text-gray-300 mb-2 ml-1">
         {prompt.description || 'No description available.'}
       </p>
+      
+      {!hasVariables && (
+        <div className="flex items-center gap-1 mb-2 ml-1">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span className="text-xs text-gray-500 dark:text-gray-400 italic">No variables - Use action buttons to copy or submit</span>
+        </div>
+      )}
       
       {prompt.tags && prompt.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
