@@ -194,10 +194,11 @@ The application implements a robust authentication system with the following fea
 
 1. **User Account Management**:
    - Secure registration with email validation
-   - Password encryption using bcrypt
-   - Login/logout functionality
-   - Password reset capabilities
-   - User profile management
+   - Password encryption using bcrypt (12 rounds)
+   - Login/logout functionality with session management
+   - Password change capabilities for authenticated users
+   - Admin-controlled password reset functionality
+   - User profile management with first/last name fields
 
 2. **Session Management**:
    - JWT-based authentication
@@ -207,15 +208,19 @@ The application implements a robust authentication system with the following fea
 
 3. **Authorization**:
    - Role-based access control (admin vs. regular user)
-   - Protected API routes requiring authentication
+   - Protected API routes requiring authentication via middleware
    - Administrative functions restricted to admin users
+   - Admin panel for user management at `/admin`
+   - Admin ability to toggle user admin status
 
 4. **Security Measures**:
-   - Password hashing with bcrypt
-   - CSRF protection
-   - Rate limiting for login attempts
+   - Password hashing with bcrypt (12 rounds)
+   - CSRF protection via secure HTTP-only cookies
+   - Session expiration and cleanup
    - Session fixation prevention
    - XSS protection
+   - Secure JWT token generation and validation
+   - Protected authentication middleware for API routes
 
 ## Multi-User Data Isolation
 
@@ -294,14 +299,17 @@ The authentication system follows these key flows:
    - Initial user settings are created
    - JWT token is generated and sent to the client
    - User is logged in automatically
+   - Session record is created in the database
 
 2. **Login Flow**:
    - User submits login form with email and password
    - Server validates credentials against the database
    - On successful validation, a new session is created
    - JWT token is generated with user ID and admin status
+   - Session record is created in the database with expiration
    - Token is stored in an HTTP-only cookie
    - User is redirected to the main application
+   - Old sessions are cleaned up on successful login
 
 3. **Authentication Check Flow**:
    - Client makes requests with the JWT cookie
@@ -311,9 +319,15 @@ The authentication system follows these key flows:
    - Protected routes/APIs check for the authenticated user
 
 4. **User Administration Flow**:
-   - Admin users can access the user management interface
-   - Interface allows creating new users, resetting passwords, and enabling/disabling accounts
+   - Admin users can access the user management interface at `/admin`
+   - Interface displays all users with their details and status
+   - Admin capabilities include:
+     - Creating new users with temporary passwords
+     - Resetting user passwords to temporary values
+     - Toggling user admin status
+     - Viewing user registration dates and names
    - Only users with admin flag can access these functions
+   - Admin middleware protects all admin API routes
 
 ### Client-Server Architecture
 
@@ -359,11 +373,18 @@ Authentication is handled through dedicated API routes:
 // Authentication API routes structure
 /api/auth/
   ├─ register/ - Handles user registration
-  ├─ login/ - Handles user login
-  ├─ logout/ - Handles user logout
-  ├─ me/ - Gets current user data
-  ├─ change-password/ - Handles password changes
-  └─ reset-password/ - Handles password resets
+  ├─ login/ - Handles user login with session creation
+  ├─ logout/ - Handles user logout and session cleanup
+  ├─ me/ - Gets current authenticated user data
+  └─ change-password/ - Handles password changes for authenticated users
+
+/api/admin/
+  └─ users/
+      ├─ route.js - Lists all users (GET) and creates new users (POST)
+      └─ [id]/
+          ├─ route.js - Updates user details (PUT) and deletes users (DELETE)
+          ├─ reset-password/ - Resets user password (admin only)
+          └─ toggle-admin/ - Toggles user admin status
 ```
 
 ### Client-Side Storage API
@@ -466,7 +487,7 @@ export async function initializeDatabase() {
           lastName: 'User'
         }
       });
-      console.log('Created initial admin user');
+      console.log('Created initial admin user (email: admin@example.com, password: RoboPrepMe)');
     }
 
     return true;
@@ -537,9 +558,13 @@ The database includes version tracking to manage future schema changes:
 ### Authentication Enhancements
 - OAuth integration for social login
 - Two-factor authentication
-- Email verification
+- Email verification for new accounts
 - Account lockout after failed attempts
 - More granular permission system
+- Password strength requirements
+- Session management UI for users
+- Remember me functionality
+- Password reset via email
 
 ### Multi-User Enhancements
 - User groups and team features

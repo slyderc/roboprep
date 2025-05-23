@@ -60,3 +60,6 @@ Thumbs.db
 
 # Archives
 /archive.tar.gz
+
+# Documentation plans
+API_IMPLEMENTATION_PLAN.md
