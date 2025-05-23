@@ -49,9 +49,10 @@ The repository is organized into two main sections:
 
 ### Technology Stack
 
-- **Frontend Framework**: React with Next.js
+- **Frontend Framework**: React with Next.js 14
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
+- **Authentication**: JWT-based multi-user authentication
 - **Data Persistence**: SQLite database with Prisma ORM
 - **API Layer**: Next.js API routes
 - **AI Integration**: OpenAI API integration
@@ -60,10 +61,12 @@ The repository is organized into two main sections:
 
 1. **User Interface**
    - Single-page responsive application with dark/light theme support
-   - Individual prompt cards with clean, modern styling
+   - Individual prompt cards with clean, modern styling and visual feedback
    - Static categories sidebar that remains visible while scrolling
    - "FILTER BY TAGS" panel for refining prompt lists
    - Standardized styling between light and dark themes
+   - Color-coded action buttons across modals for better usability
+   - Visual indicators for prompts without variables
    - Attribution links to original creators
 
 2. **Navigation and Organization**
@@ -75,6 +78,9 @@ The repository is organized into two main sections:
 
 3. **Data Management**
    - SQLite database with Prisma ORM
+   - Multi-user authentication with JWT sessions
+   - User-specific data isolation (favorites, recently used, responses)
+   - Admin interface for user management
    - API routes for database operations
    - Storage.js wrapper that maintains compatibility with previous API
    - Support for import/export functionality including OpenAI responses
@@ -98,6 +104,8 @@ The repository is organized into two main sections:
 - `/webpage/prisma/`: Database schema and migrations
   - `schema.prisma`: Database model definitions
 - `/webpage/src/app/`: Next.js app router pages and layout
+  - `/api/auth/`: Authentication endpoints (login, register, logout)
+  - `/api/admin/`: Admin interface endpoints for user management
   - `/api/openai/`: API route for OpenAI integration
   - `/api/db/`: API routes for database operations
 - `/webpage/src/components/`: UI components
@@ -110,11 +118,13 @@ The repository is organized into two main sections:
   - `ResponseListModal.jsx`: Lists all responses for a prompt
 - `/webpage/src/context/`: React Context providers
   - `PromptContext.jsx`: Handles prompt and response management
+  - `AuthContext.jsx`: Handles user authentication and session management
 - `/webpage/src/lib/`: Utility functions and helpers
   - `db.js`: Database connection and helper functions
   - `storage.js`: Database wrapper with localStorage-compatible API
   - `openaiService.js`: OpenAI API integration
   - `apiClient.js`: Client-side API wrapper
+  - `auth.js`: Authentication utilities and JWT handling
 - `/webpage/src/styles/`: Global CSS and theme definitions
   - `globals.css`: Contains theme variables and global styles
 
@@ -122,12 +132,20 @@ The repository is organized into two main sections:
 
 ### Environment Setup
 
-The web application requires OpenAI API credentials to be configured in a `.env.local` file:
+The web application requires OpenAI API credentials and authentication settings to be configured in a `.env.local` file:
 ```
+# OpenAI API settings
 NEXT_PUBLIC_OPENAI_API_KEY=your_api_key_here
 NEXT_PUBLIC_OPENAI_MODEL=gpt-4o
 NEXT_PUBLIC_OPENAI_MAX_TOKENS=2048
 NEXT_PUBLIC_OPENAI_TEMPERATURE=0.7
+
+# Database settings
+DATABASE_URL="file:../roboprep.db"
+
+# Authentication settings
+JWT_SECRET="your-secure-random-secret-key"
+JWT_EXPIRATION="12h"
 ```
 
 ### Response Structure
@@ -137,6 +155,7 @@ AI responses are stored with the following structure:
 {
   "id": "response_1234567890",           // Unique identifier
   "promptId": "associated_prompt_id",    // ID of the prompt that generated this response
+  "userId": "user_id",                   // ID of the user who created this response
   "responseText": "The API response text", // The content returned by OpenAI
   "modelUsed": "gpt-4o",                 // Model that generated the response
   "promptTokens": 150,                   // Number of tokens in the prompt
@@ -158,6 +177,47 @@ AI responses are stored with the following structure:
 4. Response is displayed in a modal with options to save
 5. Saved responses can be viewed, edited, and managed via response history
 6. Responses can be exported along with prompts
+
+## Recent UI Improvements
+
+### Visual Feedback and Button Styling
+The application now includes enhanced visual feedback:
+
+- **Color-coded Action Buttons**: Consistent button colors across all modals
+  - Cancel/Close: Red (`bg-red-600`)
+  - Copy: Blue (`bg-blue-600`) or Purple (`bg-purple-600`)
+  - Submit/Save: Green (`bg-green-600`)
+  - Preview: Blue with eye icon (`bg-blue-600`)
+  - New Response: Purple (`bg-purple-600`)
+
+- **Prompt Card Indicators**: 
+  - Visual indicators for prompts without variables
+  - Informative tooltips explaining interaction behavior
+  - Hover effects for clickable elements
+
+- **Button Layout**: 
+  - Cancel buttons positioned on the far left
+  - Action buttons grouped on the right
+  - Consistent spacing and sizing
+
+### Updated Placeholder Examples
+Variable placeholders now use modern, relevant examples:
+- Artist: "Urban Heat" 
+- Song: "Shake The Disease"
+- Album: "Violator"
+- Station: "KEXP"
+- City: "Seattle"
+- Genre: "goth, synth-wave, indie-rock, etc."
+
+## Future Development
+
+### API Implementation Plan
+A comprehensive API implementation plan has been created (`API_IMPLEMENTATION_PLAN.md`) that outlines:
+- RESTful API interface for all UI functionality
+- API key management system
+- Database schema extensions for API access
+- Security and rate limiting considerations
+- Migration strategy from current architecture
 
 ## Development Guidelines
 
