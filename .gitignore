@@ -63,3 +63,13 @@ Thumbs.db
 
 # Documentation plans
 API_IMPLEMENTATION_PLAN.md
+
+# Added by Claude Task Master
+dev-debug.log
+# Dependency directories
+# Environment variables
+.vscode
+# OS specific
+# Task files
+tasks.json
+tasks/ 
