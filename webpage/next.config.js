@@ -12,12 +12,23 @@ const nextConfig = {
     OPENAI_MAX_TOKENS: process.env.NEXT_PUBLIC_OPENAI_MAX_TOKENS,
     OPENAI_TEMPERATURE: process.env.NEXT_PUBLIC_OPENAI_TEMPERATURE,
   },
-  // Silence build warnings 
+  // Silence build warnings and errors
   eslint: {
-    ignoreDuringBuilds: true, 
+    ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
+  },
+  // Suppress common warnings
+  logging: {
+    fetches: {
+      fullUrl: false,
+    },
+  },
+  // Reduce console output during build
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
   },
   // Settings for auth-based app (uses cookies and dynamic routes)
   trailingSlash: false,
