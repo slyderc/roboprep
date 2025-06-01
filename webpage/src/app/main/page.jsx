@@ -12,8 +12,8 @@ export default function MainPage() {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-2xl font-semibold text-gray-800">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-2xl font-semibold text-gray-800 dark:text-gray-200">Loading...</div>
       </div>
     );
   }
@@ -22,8 +22,8 @@ export default function MainPage() {
     // Redirect to login if not authenticated
     window.location.href = '/login?redirect=/main';
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-2xl font-semibold text-gray-800">Redirecting to login...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-2xl font-semibold text-gray-800 dark:text-gray-200">Redirecting to login...</div>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export default function MainPage() {
   return (
     <SettingsProvider>
       <PromptProvider>
-        <div className="relative min-h-screen">
+        <div className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
           <HomePage />
         </div>
       </PromptProvider>

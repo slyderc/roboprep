@@ -154,13 +154,13 @@ export function NewPromptModal({ isOpen, onClose, promptToEdit = null }) {
       footer={
         <div className="flex justify-between w-full">
           <Button 
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white"
             onClick={onClose}
           >
             Cancel
           </Button>
           <Button 
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"
             onClick={handleSave}
           >
             {isEditing ? 'Save Changes' : 'Create Prompt'}

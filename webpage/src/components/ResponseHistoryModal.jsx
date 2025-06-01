@@ -269,7 +269,7 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Saved Responses">
         <div className="p-4 text-center">
-          <p className="text-gray-500">No saved responses found for this prompt.</p>
+          <p className="text-gray-500 dark:text-gray-400">No saved responses found for this prompt.</p>
         </div>
       </Modal>
     );
@@ -283,7 +283,7 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
           <>
             {/* Navigation indicator */}
             <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 Response {currentIndex + 1} of {responses.length}
               </div>
               
@@ -314,14 +314,14 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
             {/* Variables used */}
             {responses[currentIndex]?.variablesUsed && 
               Object.keys(responses[currentIndex].variablesUsed).length > 0 && (
-                <div className="mb-3 p-3 border border-gray-200 rounded-md shadow-sm">
+                <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-800">
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(responses[currentIndex].variablesUsed).map(([key, value]) => (
                       <div key={key} className="flex items-center gap-1 max-w-full">
-                        <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-medium truncate max-w-[120px]" title={key}>
+                        <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 text-xs font-medium truncate max-w-[120px]" title={key}>
                           {key}
                         </span>
-                        <span className="text-gray-600 text-sm truncate max-w-[180px]" title={value}>
+                        <span className="text-gray-600 dark:text-gray-300 text-sm truncate max-w-[180px]" title={value}>
                           {value}
                         </span>
                       </div>
@@ -332,17 +332,17 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
             }
             
             {/* Response content */}
-            <div className="bg-gray-50 p-4 rounded-md mb-4 max-h-80 overflow-y-auto">
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4 max-h-80 overflow-y-auto">
               {isEditing ? (
                 <textarea
                   ref={textareaRef}
-                  className="w-full h-full min-h-[200px] text-gray-800 bg-white border border-gray-300 rounded p-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
+                  className="w-full h-full min-h-[200px] text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
                   value={editedText}
                   onChange={handleTextChange}
                 />
               ) : (
                 <div 
-                  className="text-gray-800 whitespace-pre-wrap cursor-pointer hover:bg-gray-100 p-2 rounded"
+                  className="text-gray-800 dark:text-gray-100 whitespace-pre-wrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 p-2 rounded"
                   onClick={handleTextClick}
                   title="Click to edit"
                 >
@@ -352,7 +352,7 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
             </div>
             
             {/* Response metadata */}
-            <div className="text-sm text-gray-500 mb-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               <div>Created: {formatDate(responses[currentIndex]?.createdAt)}</div>
               {responses[currentIndex]?.modelUsed && <div>Model: {responses[currentIndex]?.modelUsed}</div>}
               {responses[currentIndex]?.totalTokens && (
@@ -366,10 +366,10 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
             
             {/* Actions */}
             {confirmDelete ? (
-              <div className="mt-6 border-t pt-4 border-gray-200">
+              <div className="mt-6 border-t pt-4 border-gray-200 dark:border-gray-700">
                 <div className="text-center mb-4">
-                  <p className="text-gray-800 font-medium">Delete this response?</p>
-                  <p className="text-gray-500 text-sm">This action cannot be undone.</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-medium">Delete this response?</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">This action cannot be undone.</p>
                 </div>
                 <div className="flex justify-center gap-3">
                   <Button onClick={handleCancelDelete} variant="secondary">Cancel</Button>

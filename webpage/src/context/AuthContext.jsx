@@ -74,10 +74,23 @@ export function AuthProvider({ children }) {
       const data = await response.json();
       
       if (response.ok) {
-        setUser(data.user);
-        toast.success('Registration successful');
-        router.push('/');
-        return { success: true };
+        // Handle approval workflow
+        if (data.needsApproval) {
+          // User needs approval - don't set user state or redirect
+          return { 
+            success: true, 
+            needsApproval: true,
+            message: data.message 
+          };
+        } else {
+          // User is approved (first user) - set user and continue normally
+          setUser(data.user);
+          toast.success('Registration successful');
+          return { 
+            success: true, 
+            needsApproval: false 
+          };
+        }
       } else {
         toast.error(data.error || 'Registration failed');
         return { success: false, error: data.error };

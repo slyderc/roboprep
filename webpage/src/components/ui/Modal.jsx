@@ -29,7 +29,23 @@ export function Modal({
   // Handle click outside to close
   useEffect(() => {
     function handleClickOutside(event) {
-      if (modalRef.current && !modalRef.current.contains(event.target) && isOpen) {
+      // Don't close if modal click-outside is temporarily disabled (for dropdowns)
+      if (window.modalClickOutsideDisabled) {
+        return;
+      }
+      
+      // Don't close if clicking inside the modal
+      if (modalRef.current && modalRef.current.contains(event.target)) {
+        return;
+      }
+      
+      // Don't close if clicking on dropdown options (rendered via portal)
+      if (event.target.closest('[data-dropdown-option]')) {
+        return;
+      }
+      
+      // Close modal for other outside clicks
+      if (isOpen) {
         onClose();
       }
     }
@@ -76,7 +92,7 @@ export function Modal({
         className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full ${maxWidths[maxWidth]} animate-modal-in relative z-[50001] modal-container dark:text-gray-200`}
       >
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200">{title}</h2>
+          <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">{title}</h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full"

@@ -21,6 +21,8 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [validationStates, setValidationStates] = useState({
     email: null,
     password: null,
@@ -145,10 +147,10 @@ export default function RegisterPage() {
       
       if (result.success) {
         if (result.needsApproval) {
-          // Show success message for users needing approval
+          // Show success state for users needing approval
           setError('');
-          alert('Registration successful! Your account is pending administrator approval. You will be able to sign in once approved.');
-          router.push('/login');
+          setRegistrationSuccess(true);
+          setSuccessMessage(`Welcome, ${formData.firstName}! Your account has been created successfully and is pending administrator approval. You will receive access to the application once an administrator reviews and approves your account.`);
         } else {
           // Use window.location for a full page reload to ensure cookie is set
           window.location.href = '/main';
@@ -175,27 +177,78 @@ export default function RegisterPage() {
             height={100}
             className="mx-auto"
           />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
-            Create your account
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Already have an account?{' '}
-            <Link
-              href="/login"
-              className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Sign in
-            </Link>
-          </p>
+          {registrationSuccess ? (
+            <>
+              <h2 className="mt-6 text-3xl font-extrabold text-green-600 dark:text-green-400">
+                Registration Successful!
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Your account has been created
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
+                Create your account
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Already have an account?{' '}
+                <Link
+                  href="/login"
+                  className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </>
+          )}
         </div>
         
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative dark:bg-red-900 dark:text-red-200 dark:border-red-700" role="alert">
-            <span className="block sm:inline">{error}</span>
+        {registrationSuccess ? (
+          <div className="space-y-6">
+            {/* Success message */}
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-4 rounded relative dark:bg-green-900 dark:text-green-200 dark:border-green-700">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm">{successMessage}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Next steps */}
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-4 rounded dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200">
+              <h3 className="font-medium text-sm mb-2">What happens next?</h3>
+              <ul className="text-sm space-y-1 list-disc list-inside">
+                <li>An administrator will review your account details</li>
+                <li>You'll receive approval notification via the contact information provided</li>
+                <li>Once approved, you can sign in using your email and password</li>
+              </ul>
+            </div>
+            
+            {/* Action button */}
+            <div className="text-center">
+              <Link
+                href="/login"
+                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800"
+              >
+                Go to Sign In
+              </Link>
+            </div>
           </div>
-        )}
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        ) : (
+          <>
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative dark:bg-red-900 dark:text-red-200 dark:border-red-700" role="alert">
+                <span className="block sm:inline">{error}</span>
+              </div>
+            )}
+            
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div>
@@ -332,6 +385,8 @@ export default function RegisterPage() {
             </button>
           </div>
         </form>
+          </>
+        )}
       </div>
     </div>
   );

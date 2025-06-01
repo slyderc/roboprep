@@ -125,14 +125,14 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
       footer={
         <div className="flex justify-between w-full">
           <Button 
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white"
             onClick={onClose}
           >
             Cancel
           </Button>
           <div className="flex gap-2">
             <Button 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
               onClick={handlePreview}
               icon={
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -144,7 +144,7 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
               Preview
             </Button>
             <Button 
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white"
               onClick={handleCopy}
               icon={
                 <svg 
@@ -167,7 +167,7 @@ export function VariableModal({ isOpen, onClose, prompt, onCopyComplete, onSubmi
             </Button>
             <Button 
               onClick={handleSubmitToAi}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"
               icon={
                 <svg 
                   className="w-4 h-4" 

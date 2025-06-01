@@ -84,8 +84,8 @@ export function TagFilter({ prompts, onFilterChange }) {
             key={tag}
             onClick={() => toggleTag(tag)}
             className={selectedTags.includes(tag)
-              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full text-prompt-tag theme-aware-tag hover:bg-blue-200 dark:hover:bg-blue-800" // Active filter - exactly like prompt card tag
-              : "inactive-tag rounded-full text-prompt-tag theme-aware-tag hover:bg-gray-400 dark:hover:bg-gray-700 filter-tag" // Inactive filter with consistent hover behavior
+              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full text-xs px-1.5 py-0.5 inline-flex items-center justify-center min-h-5 leading-tight cursor-pointer transition-colors hover:bg-blue-200 dark:hover:bg-blue-800" // Active filter - exactly like prompt card tag
+              : "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full text-xs px-1.5 py-0.5 inline-flex items-center justify-center min-h-5 leading-tight cursor-pointer transition-colors hover:bg-gray-400 hover:text-gray-800 dark:hover:bg-gray-500 dark:hover:text-gray-200" // Inactive filter with consistent hover behavior
             }
           >
             {tag}

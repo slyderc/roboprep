@@ -73,7 +73,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
       title={hasVariables ? "Click to replace variables and copy" : "This prompt has no variables - use the action buttons below"}
     >
       <div className="flex justify-between items-start">
-        <h3 className="text-prompt-title text-blue-600 dark:text-blue-400 font-semibold mb-2 inline-block py-1 px-3 bg-blue-100 dark:bg-blue-900/40 rounded-md">
+        <h3 className="text-blue-600 dark:text-blue-400 font-semibold mb-2 inline-block py-1 px-3 bg-blue-100 dark:bg-blue-900/40 rounded-md text-base leading-tight shadow-sm">
           {prompt.title}
         </h3>
         
@@ -92,7 +92,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
         )}
       </div>
       
-      <p className="text-prompt-desc text-gray-600 dark:text-gray-300 mb-2 ml-1">
+      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2 ml-1">
         {prompt.description || 'No description available.'}
       </p>
       
@@ -110,7 +110,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           {prompt.tags.map((tag, index) => (
             <span
               key={index}
-              className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded-full text-prompt-tag theme-aware-tag"
+              className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded-full text-xs inline-flex items-center justify-center min-h-5 leading-tight transition-colors"
             >
               {tag}
             </span>
@@ -162,7 +162,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           <IconButton
             onClick={handleFavoriteClick}
             title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-            className={isFavorite ? 'text-red-500 hover:text-red-600' : 'hover:text-yellow-500'}
+            className={isFavorite ? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300' : 'hover:text-yellow-500 dark:hover:text-yellow-400'}
             icon={
               <svg 
                 className="w-4 h-4" 
@@ -184,7 +184,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           <IconButton
             onClick={handleCopyClick}
             title="Copy Prompt"
-            className="hover:text-blue-600"
+            className="hover:text-blue-600 dark:hover:text-blue-400"
             icon={
               <svg 
                 className="w-4 h-4" 
@@ -207,7 +207,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           <IconButton
             onClick={handleSubmitToAiClick}
             title="Submit to AI"
-            className="hover:text-purple-600"
+            className="hover:text-purple-600 dark:hover:text-purple-400"
             icon={
               <svg 
                 className="w-4 h-4" 
@@ -229,7 +229,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           <IconButton
             onClick={handleEditClick}
             title="Edit Prompt"
-            className="hover:text-green-600"
+            className="hover:text-green-600 dark:hover:text-green-400"
             icon={
               <svg 
                 className="w-4 h-4" 
@@ -253,7 +253,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
             <IconButton
               onClick={handleViewResponsesClick}
               title={`View ${responseCount} Response${responseCount !== 1 ? 's' : ''}`}
-              className="hover:text-purple-600"
+              className="hover:text-purple-600 dark:hover:text-purple-400"
               icon={
                 <svg 
                   className="w-4 h-4" 

@@ -63,14 +63,14 @@ export function HomePage() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <Header onOpenNewPrompt={() => setIsNewPromptModalOpen(true)} />
       
       <main className="flex-grow container mx-auto px-4 py-4">
         <div className="grid grid-cols-12 gap-4 relative min-h-[calc(100vh-100px)]">
           {/* Sidebar - Fixed position on desktop */}
           <div className="col-span-12 sm:col-span-3 xl:col-span-2">
-            <div className="bg-white shadow rounded-lg overflow-hidden sticky top-4">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden sticky top-4">
               <CategoryList />
             </div>
           </div>

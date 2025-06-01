@@ -187,7 +187,7 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
         )}
         
         {(error || responseError) && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
             <strong>Error:</strong> {(error || responseError)?.message || 'Failed to get AI response'}
           </div>
         )}
@@ -197,23 +197,23 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
             {/* Prompt title if available */}
             {promptData && (
               <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500">Prompt</h3>
-                <p className="text-gray-700">{promptData.title}</p>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Prompt</h3>
+                <p className="text-gray-700 dark:text-gray-300">{promptData.title}</p>
               </div>
             )}
             
             {/* Response content */}
-            <div className="bg-gray-50 p-4 rounded-md mb-4 max-h-96 overflow-y-auto">
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4 max-h-96 overflow-y-auto">
               {isEditing ? (
                 <textarea
                   ref={textareaRef}
-                  className="w-full h-full min-h-[200px] text-gray-800 bg-white border border-gray-300 rounded p-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
+                  className="w-full h-full min-h-[200px] text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
                   value={editedText}
                   onChange={handleTextChange}
                 />
               ) : (
                 <div 
-                  className="text-gray-800 whitespace-pre-wrap cursor-pointer hover:bg-gray-100 p-2 rounded"
+                  className="text-gray-800 dark:text-gray-100 whitespace-pre-wrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 p-2 rounded"
                   onClick={handleTextClick}
                   title="Click to edit"
                 >
@@ -225,7 +225,7 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
             
             {/* Response metadata */}
             {(aiResponse || response)?.modelUsed && (
-              <div className="mb-4 text-xs text-gray-500">
+              <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
                 <p>Model: {(aiResponse || response).modelUsed}</p>
                 {(aiResponse || response).totalTokens && (
                   <p>Tokens used: {(aiResponse || response).totalTokens} ({(aiResponse || response).promptTokens} prompt, {(aiResponse || response).completionTokens} completion)</p>
@@ -251,7 +251,7 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
                 ) : (
                   <Button 
                     onClick={handleClose} 
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                    className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white"
                   >
                     Close
                   </Button>
@@ -276,7 +276,7 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
                   <>
                     <Button 
                       onClick={handleCopy} 
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
                       icon={
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -288,7 +288,7 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
                     
                     <Button 
                       onClick={handleNewResponse}
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white"
                       icon={
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -300,7 +300,7 @@ export function ResponseModal({ isOpen, onClose, promptData, response, loading, 
                     
                     <Button 
                       onClick={handleSave} 
-                      className={saved ? "bg-gray-400 cursor-not-allowed text-white" : "bg-green-600 hover:bg-green-700 text-white"}
+                      className={saved ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white" : "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"}
                       disabled={saved}
                       icon={
                         saved ? (

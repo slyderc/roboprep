@@ -178,7 +178,7 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
   
   return (
     <div className="py-4 h-full">
-      <div className="sticky top-0 bg-gray-50 pt-1 pb-3 z-[5] dark:bg-background-color prompt-list-header">
+      <div className="sticky top-0 bg-gray-50 dark:bg-gray-900 pt-1 pb-3 z-[5] prompt-list-header">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">{activeCategoryName}</h2>
           <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
               title="New Prompt"
               onClick={() => setIsEditModalOpen(true)}
               variant="primary"
-              className="bg-blue-300 text-blue-700 rounded-full p-1 hover:bg-blue-400 hover:text-blue-800 hover:shadow-md hover:scale-110 transition-all duration-200 dark:bg-blue-300 dark:text-blue-700 dark:hover:bg-blue-400 dark:hover:text-blue-800 shadow-sm transform"
+              className="bg-blue-600 text-white rounded-full p-1 hover:bg-blue-700 hover:shadow-md hover:scale-110 transition-all duration-200 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 shadow-sm transform"
               icon={
                 <svg
                   className="w-4 h-4"
@@ -204,7 +204,7 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
                 </svg>
               }
             />
-            <span className="bg-gray-200 dark:bg-gray-700 dark:text-gray-200 px-2 py-1 rounded-full font-medium count-indicator">
+            <span className="min-w-6 h-5 text-center text-xs leading-none py-0.5 px-1.5 rounded-full inline-flex items-center justify-center font-medium transition-colors bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200 dark:border dark:border-gray-500">
               {promptsWithStatus.length}
             </span>
           </div>

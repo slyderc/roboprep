@@ -68,15 +68,15 @@ export function CategoryList() {
       <div
         key={category.id}
         className={`
-          px-2 py-1.5 rounded-md cursor-pointer flex items-center justify-between category-item
+          px-2 py-1.5 rounded-md cursor-pointer flex items-center justify-between transition-colors
           ${activeCategory === category.id 
-            ? 'bg-blue-100 text-blue-700 font-semibold active-category' 
-            : 'text-gray-700 hover:bg-gray-100'}
+            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold' 
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}
         `}
         onClick={() => setActiveCategory(category.id)}
       >
-        <span className="text-category-name truncate mr-2 flex-grow">{category.name}</span>
-        <span className="count-indicator">
+        <span className="truncate mr-2 flex-grow text-sm leading-tight tracking-tight block max-w-[calc(100%-1.75rem)]">{category.name}</span>
+        <span className="min-w-6 h-5 text-center text-xs leading-none py-0.5 px-1.5 rounded-full inline-flex items-center justify-center font-medium transition-colors bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200 dark:border dark:border-gray-500">
           {category.count}
         </span>
       </div>
@@ -110,7 +110,7 @@ export function CategoryList() {
           )}
           <button
             onClick={handleLogout}
-            className="inactive-tag theme-aware-tag filter-tag text-xs font-medium"
+            className="bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full text-xs px-1.5 py-0.5 inline-flex items-center justify-center min-h-5 leading-tight cursor-pointer transition-colors hover:bg-gray-400 hover:text-gray-800 dark:hover:bg-gray-500 dark:hover:text-gray-200 font-medium"
           >
             Logout
           </button>
