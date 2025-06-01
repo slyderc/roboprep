@@ -471,7 +471,6 @@ async function handleStoreCorePrompts({ prompts }) {
 
 // Add user prompts (appending to existing)
 async function handleAddUserPrompts({ prompts }) {
-  console.log('handleAddUserPrompts - Adding prompts:', prompts.length);
   await addPrompts(prompts, true);
   return NextResponse.json({ success: true });
 }
