@@ -25,6 +25,8 @@ export default function RegisterPage() {
     password: null,
     passwordMatch: null
   });
+  const [turnstileValidated, setTurnstileValidated] = useState(false);
+  const [turnstileError, setTurnstileError] = useState(false);
   
   const { register } = useAuth();
   const router = useRouter();
@@ -55,15 +57,24 @@ export default function RegisterPage() {
     return null;
   };
 
+  // Turnstile success handler
+  const handleTurnstileSuccess = (token) => {
+    console.log('Turnstile success callback received, token:', token ? 'Present' : 'Missing');
+    setTurnstileValidated(true);
+  };
+
   // Check if form is valid for submission
   const isFormValid = () => {
-    return (
+    const basicFormValid = (
       validationStates.email?.isValid &&
       validationStates.password?.isValid &&
       getPasswordMatchValidation()?.isValid &&
       formData.firstName.trim() &&
       formData.lastName.trim()
     );
+    
+    // Allow submission if basic form is valid AND either Turnstile is validated OR there's a Turnstile error
+    return basicFormValid && (turnstileValidated || turnstileError);
   };
 
   const handleSubmit = async (e) => {
@@ -304,7 +315,18 @@ export default function RegisterPage() {
           </div>
 
           {/* Turnstile Widget */}
-          <TurnstileWidget ref={turnstileRef} widgetId="turnstile-widget-register" />
+          <TurnstileWidget 
+            ref={turnstileRef} 
+            widgetId="turnstile-widget-register" 
+            onSuccess={handleTurnstileSuccess}
+            onError={() => setTurnstileError(true)}
+          />
+          
+          {turnstileError && (
+            <div className="text-sm text-yellow-600 dark:text-yellow-400 text-center">
+              ⚠️ Security verification having issues. You can still attempt to create account.
+            </div>
+          )}
 
           <div>
             <button
