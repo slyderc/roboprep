@@ -28,6 +28,17 @@ debug*.js
 roboprep.db
 roboprep.db-journal
 
+# Database backup files
+*-backup-*.db
+*-backup-*.sqlite
+*-backup-*.sqlite3
+roboprep-backup-*.db
+roboprep.db.backup
+*.db.backup
+backup_*.db
+backup_*.sqlite
+backup_*.sqlite3
+
 # OpenAI API keys and configuration
 .openai-credentials
 *.openai-key
