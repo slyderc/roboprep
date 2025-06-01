@@ -13,20 +13,26 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [turnstileWidgetId, setTurnstileWidgetId] = useState(null);
+  const [isClient, setIsClient] = useState(false);
   
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '/';
 
-  // Check if we should show Turnstile based on environment
+  // Check if we should show Turnstile based on environment (after hydration)
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const isLocalDevelopment = typeof window !== 'undefined' && isDevelopment &&
+  const isLocalDevelopment = isClient && isDevelopment &&
     (window.location.hostname === 'localhost' || 
      window.location.hostname === '127.0.0.1');
   
   // Show Turnstile when site key exists and not in local development
   const shouldShowTurnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !isLocalDevelopment;
+
+  // Set client state after hydration to prevent hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Handle Turnstile widget initialization
   useEffect(() => {
@@ -181,8 +187,8 @@ export default function LoginPage() {
             </div>
           )}
           
-          {/* Development Notice */}
-          {!shouldShowTurnstile && isLocalDevelopment && (
+          {/* Development Notice - only show after hydration */}
+          {isClient && !shouldShowTurnstile && isLocalDevelopment && (
             <div className="text-center text-sm text-gray-500 dark:text-gray-400">
               Development mode - Security verification bypassed
             </div>
