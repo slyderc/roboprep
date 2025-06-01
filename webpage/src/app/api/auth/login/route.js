@@ -82,6 +82,14 @@ export async function POST(request) {
       );
     }
 
+    // Check if user is approved
+    if (!user.isApproved) {
+      return NextResponse.json(
+        { error: 'Your account is pending administrator approval. Please check back later.' },
+        { status: 403 }
+      );
+    }
+
     // Create session
     const session = await createSession(user);
 
@@ -120,6 +128,7 @@ export async function POST(request) {
         firstName: user.firstName,
         lastName: user.lastName,
         isAdmin: user.isAdmin,
+        isApproved: user.isApproved,
       }
     });
     

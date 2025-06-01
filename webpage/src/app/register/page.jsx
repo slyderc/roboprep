@@ -6,6 +6,9 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
+import EmailValidator from '@/components/EmailValidator';
+import { passwordValidation, emailValidation, passwordMatch } from '@/lib/validation';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +20,11 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [validationStates, setValidationStates] = useState({
+    email: null,
+    password: null,
+    passwordMatch: null
+  });
   
   const { register } = useAuth();
   const router = useRouter();
@@ -25,21 +33,74 @@ export default function RegisterPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (error) setError('');
+  };
+
+  // Validation handlers
+  const handleEmailValidation = (validation) => {
+    setValidationStates(prev => ({ ...prev, email: validation }));
+  };
+
+  const handlePasswordValidation = (validation) => {
+    setValidationStates(prev => ({ ...prev, password: validation }));
+  };
+
+  // Check password match whenever passwords change
+  const getPasswordMatchValidation = () => {
+    if (formData.confirmPassword) {
+      return passwordMatch.validate(formData.password, formData.confirmPassword);
+    }
+    return null;
+  };
+
+  // Check if form is valid for submission
+  const isFormValid = () => {
+    return (
+      validationStates.email?.isValid &&
+      validationStates.password?.isValid &&
+      getPasswordMatchValidation()?.isValid &&
+      formData.firstName.trim() &&
+      formData.lastName.trim()
+    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+    // Comprehensive client-side validation
+    const emailValid = emailValidation.validate(formData.email);
+    const passwordValid = passwordValidation.validate(formData.password);
+    const passwordsMatch = passwordMatch.validate(formData.password, formData.confirmPassword);
+    
+    // Check email validation
+    if (!emailValid.isValid) {
+      setError(emailValid.errors[0] || 'Please enter a valid email address');
       return;
     }
     
-    // Validate password strength
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    // Check password validation
+    if (!passwordValid.isValid) {
+      setError(passwordValid.errors[0] || 'Password does not meet requirements');
+      return;
+    }
+    
+    // Check password match
+    if (!passwordsMatch.isValid) {
+      setError(passwordsMatch.error || 'Passwords do not match');
+      return;
+    }
+    
+    // Check required fields
+    if (!formData.firstName.trim()) {
+      setError('First name is required');
+      return;
+    }
+    
+    if (!formData.lastName.trim()) {
+      setError('Last name is required');
       return;
     }
     
@@ -64,8 +125,15 @@ export default function RegisterPage() {
       );
       
       if (result.success) {
-        // Use window.location for a full page reload to ensure cookie is set
-        window.location.href = '/main';
+        if (result.needsApproval) {
+          // Show success message for users needing approval
+          setError('');
+          alert('Registration successful! Your account is pending administrator approval. You will be able to sign in once approved.');
+          router.push('/login');
+        } else {
+          // Use window.location for a full page reload to ensure cookie is set
+          window.location.href = '/main';
+        }
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
@@ -115,17 +183,30 @@ export default function RegisterPage() {
                 <label htmlFor="email" className="sr-only">
                   Email address
                 </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
+                <div className="relative">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className={`appearance-none rounded-md relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 ${
+                      validationStates.email?.isValid === true ? 'border-green-500 pr-10' :
+                      validationStates.email?.isValid === false ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Email address"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                  {validationStates.email?.isValid && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <EmailValidator email={formData.email} onValidationChange={handleEmailValidation} />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -165,34 +246,59 @@ export default function RegisterPage() {
                 <label htmlFor="password" className="sr-only">
                   Password
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    className={`appearance-none rounded-md relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 ${
+                      validationStates.password?.isValid === true ? 'border-green-500 pr-10' :
+                      validationStates.password?.isValid === false ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
+                  {validationStates.password?.isValid && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <PasswordStrengthIndicator password={formData.password} onValidationChange={handlePasswordValidation} />
               </div>
               
               <div>
                 <label htmlFor="confirmPassword" className="sr-only">
                   Confirm Password
                 </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600"
-                  placeholder="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                />
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    className={`appearance-none rounded-md relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 ${
+                      getPasswordMatchValidation()?.isValid === true ? 'border-green-500 pr-10' :
+                      getPasswordMatchValidation()?.isValid === false ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                  />
+                  {getPasswordMatchValidation()?.isValid && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -203,7 +309,7 @@ export default function RegisterPage() {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !isFormValid()}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-800"
             >
               {isLoading ? 'Creating account...' : 'Create account'}

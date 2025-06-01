@@ -201,6 +201,31 @@ export default function AdminPage() {
     }
   };
 
+  const handleApproveUser = async (userId) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to approve user');
+      }
+      
+      showToast('User approved successfully');
+      fetchUsers();
+      
+      // Trigger stats refresh
+      setStatsRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error approving user:', error);
+      showToast(error.message, 'error');
+    }
+  };
+
   if (loading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -240,6 +265,78 @@ export default function AdminPage() {
         
         {/* Database Statistics Panel */}
         <DbStatsPanel refreshTrigger={statsRefreshTrigger} />
+        
+        {/* Needs Approval Section */}
+        {users.filter(user => !user.isApproved).length > 0 && (
+          <>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Needs Approval</h2>
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md shadow-md overflow-hidden mb-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-orange-200 dark:divide-orange-700">
+                  <thead className="bg-orange-100 dark:bg-orange-900/40">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-orange-900 dark:text-orange-200 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-orange-900 dark:text-orange-200 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-orange-900 dark:text-orange-200 uppercase tracking-wider">
+                        Registration Date
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-orange-900 dark:text-orange-200 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-orange-50 dark:bg-orange-900/10 divide-y divide-orange-200 dark:divide-orange-700">
+                    {users.filter(user => !user.isApproved).map((user) => (
+                      <tr key={user.id} className="hover:bg-orange-100 dark:hover:bg-orange-900/30">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                {user.firstName} {user.lastName}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                ID: {user.id.slice(0, 8)}...
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">{user.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => handleApproveUser(user.id)}
+                              className="px-2 py-1 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="px-2 py-1 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 transition-colors"
+                              disabled={deletingUserId === user.id}
+                            >
+                              {deletingUserId === user.id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
         
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">User Management</h2>
 
@@ -369,14 +466,14 @@ export default function AdminPage() {
                       Error: {error}
                     </td>
                   </tr>
-                ) : users.length === 0 ? (
+                ) : users.filter(user => user.isApproved).length === 0 ? (
                   <tr>
                     <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                      No users found
+                      No approved users found
                     </td>
                   </tr>
                 ) : (
-                  users.map((user) => (
+                  users.filter(user => user.isApproved).map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">

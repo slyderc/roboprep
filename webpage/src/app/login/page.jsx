@@ -6,18 +6,53 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import EmailValidator from '@/components/EmailValidator';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [emailValidation, setEmailValidation] = useState(null);
+  const [turnstileValidated, setTurnstileValidated] = useState(false);
   
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '/';
   const turnstileRef = useRef();
+
+  // Email validation handler
+  const handleEmailValidation = (validation) => {
+    setEmailValidation(validation);
+  };
+
+  // Check if form is valid for submission
+  const isFormValid = () => {
+    return (
+      email.trim() &&
+      password.trim() &&
+      emailValidation?.isValid &&
+      turnstileValidated
+    );
+  };
+
+  // Handle email change
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (error) setError(''); // Clear error when user starts typing
+  };
+
+  // Handle password change
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (error) setError(''); // Clear error when user starts typing
+  };
+
+  // Handle Turnstile success
+  const handleTurnstileSuccess = (token) => {
+    setTurnstileValidated(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission
@@ -91,17 +126,30 @@ function LoginForm() {
               <label htmlFor="email-address" className="sr-only">
                 Email address
               </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  id="email-address"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 ${
+                    emailValidation?.isValid === true ? 'border-green-500 pr-10' :
+                    emailValidation?.isValid === false ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Email address"
+                  value={email}
+                  onChange={handleEmailChange}
+                />
+                {emailValidation?.isValid && (
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <EmailValidator email={email} onValidationChange={handleEmailValidation} />
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
@@ -116,18 +164,18 @@ function LoginForm() {
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600"
                 placeholder="Password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
               />
             </div>
           </div>
 
           {/* Turnstile Widget */}
-          <TurnstileWidget ref={turnstileRef} widgetId="turnstile-widget" />
+          <TurnstileWidget ref={turnstileRef} widgetId="turnstile-widget" onSuccess={handleTurnstileSuccess} />
 
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !isFormValid()}
               onClick={handleSubmit}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-800"
             >

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { hashPassword, createSession, setAuthCookie, migrateLegacyData } from '@/lib/auth';
 import { verifyTurnstileToken, getClientIP } from '@/lib/turnstile';
+import { passwordValidation, emailValidation } from '@/lib/validation';
 
 export async function POST(request) {
   try {
@@ -12,6 +13,39 @@ export async function POST(request) {
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
+
+    // Server-side email validation
+    const emailValid = emailValidation.validate(email);
+    if (!emailValid.isValid) {
+      return NextResponse.json(
+        { error: emailValid.errors[0] || 'Invalid email address' },
+        { status: 400 }
+      );
+    }
+
+    // Server-side password validation
+    const passwordValid = passwordValidation.validate(password);
+    if (!passwordValid.isValid) {
+      return NextResponse.json(
+        { error: passwordValid.errors[0] || 'Password does not meet security requirements' },
+        { status: 400 }
+      );
+    }
+
+    // Validate name fields if provided
+    if (firstName && typeof firstName !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid first name' },
+        { status: 400 }
+      );
+    }
+
+    if (lastName && typeof lastName !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid last name' },
         { status: 400 }
       );
     }
@@ -71,9 +105,10 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Determine if this is the first user (make them admin)
+    // Determine if this is the first user (make them admin and auto-approve)
     const userCount = await prisma.user.count();
     const isAdmin = userCount === 0;
+    const isApproved = isAdmin; // First user is auto-approved, others need approval
 
     // Create user
     const newUser = await prisma.user.create({
@@ -83,6 +118,7 @@ export async function POST(request) {
         firstName: firstName || null,
         lastName: lastName || null,
         isAdmin,
+        isApproved,
       },
     });
 
@@ -91,19 +127,25 @@ export async function POST(request) {
       await migrateLegacyData(newUser.id);
     }
 
-    // Create session
-    const session = await createSession(newUser);
+    // Only create session and set cookie if user is approved
+    if (isApproved) {
+      // Create session
+      const session = await createSession(newUser);
 
-    // Set auth cookie
-    setAuthCookie(session);
+      // Set auth cookie
+      setAuthCookie(session);
+    }
 
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = newUser;
     
     return NextResponse.json(
       {
-        message: 'User registered successfully',
+        message: isApproved 
+          ? 'User registered successfully' 
+          : 'Account created successfully. Please wait for administrator approval before signing in.',
         user: userWithoutPassword,
+        needsApproval: !isApproved,
       },
       { status: 201 }
     );

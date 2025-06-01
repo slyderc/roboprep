@@ -22,6 +22,7 @@ export async function GET() {
         firstName: true,
         lastName: true,
         isAdmin: true,
+        isApproved: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -78,7 +79,7 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user
+    // Create user (admin-created users are auto-approved)
     const newUser = await prisma.user.create({
       data: {
         email,
@@ -86,6 +87,7 @@ export async function POST(request) {
         firstName: firstName || null,
         lastName: lastName || null,
         isAdmin: userIsAdmin || false,
+        isApproved: true, // Admin-created users are auto-approved
       },
     });
 

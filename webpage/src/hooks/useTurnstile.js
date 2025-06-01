@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useTurnstile(widgetId = 'turnstile-widget') {
+export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [turnstileWidgetId, setTurnstileWidgetId] = useState(null);
   const [isClient, setIsClient] = useState(false);
@@ -25,6 +25,9 @@ export function useTurnstile(widgetId = 'turnstile-widget') {
   useEffect(() => {
     if (!shouldShowTurnstile) {
       setTurnstileToken('development-bypass');
+      if (onSuccess) {
+        onSuccess('development-bypass');
+      }
       return;
     }
     
@@ -32,6 +35,9 @@ export function useTurnstile(widgetId = 'turnstile-widget') {
     const callback = (token) => {
       console.log(`Turnstile success callback (${widgetId}) received token:`, token ? 'Yes' : 'No');
       setTurnstileToken(token);
+      if (onSuccess) {
+        onSuccess(token);
+      }
     };
     
     callbackRef.current = callback;
@@ -71,7 +77,7 @@ export function useTurnstile(widgetId = 'turnstile-widget') {
       setTurnstileWidgetId(null);
       setTurnstileToken(null);
     };
-  }, [shouldShowTurnstile, widgetId, callbackName]);
+  }, [shouldShowTurnstile, widgetId, callbackName, onSuccess]);
   
   // Token validation utility
   const validateAndGetToken = () => {
