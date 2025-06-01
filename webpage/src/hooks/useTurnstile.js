@@ -134,10 +134,8 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
     validateAndGetToken,
     widgetProps: {
       id: widgetId,
-      className: "cf-turnstile",
-      'data-sitekey': process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-      'data-callback': callbackName,
-      'data-error-callback': errorCallbackName
+      // Remove cf-turnstile class to prevent automatic processing
+      // Only use JavaScript render method
     }
   };
 }
