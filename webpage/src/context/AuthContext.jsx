@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Register a new user
-  const register = async (email, password, firstName, lastName) => {
+  const register = async (email, password, firstName, lastName, turnstileToken = null) => {
     try {
       setLoading(true);
       const response = await fetch('/api/auth/register', {
@@ -68,7 +68,7 @@ export function AuthProvider({ children }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, firstName, lastName }),
+        body: JSON.stringify({ email, password, firstName, lastName, turnstileToken }),
       });
 
       const data = await response.json();

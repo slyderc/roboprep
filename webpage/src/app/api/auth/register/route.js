@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { hashPassword, createSession, setAuthCookie, migrateLegacyData } from '@/lib/auth';
+import { verifyTurnstileToken, getClientIP } from '@/lib/turnstile';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { email, password, firstName, lastName } = body;
+    const { email, password, firstName, lastName, turnstileToken } = body;
 
     // Validate input
     if (!email || !password) {
@@ -13,6 +14,46 @@ export async function POST(request) {
         { error: 'Email and password are required' },
         { status: 400 }
       );
+    }
+
+    // Verify Turnstile token (skip for API requests, development, or if not configured)
+    const isApiRequest = request.headers.get('user-agent')?.includes('API') || 
+                        request.headers.get('x-api-key');
+    
+    // Better environment detection
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const host = request.headers.get('host') || '';
+    const origin = request.headers.get('origin') || '';
+    
+    // Only bypass Turnstile for actual development environments
+    const isLocalDevelopment = isDevelopment && (
+      host.includes('localhost') || 
+      host.includes('127.0.0.1') || 
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    );
+    
+    // Enable Turnstile for production (when TURNSTILE_SECRET_KEY exists and not local dev)
+    const shouldUseTurnstile = process.env.TURNSTILE_SECRET_KEY && !isLocalDevelopment && !isApiRequest;
+    
+    if (shouldUseTurnstile) {
+      if (!turnstileToken) {
+        return NextResponse.json(
+          { error: 'Security verification required' },
+          { status: 400 }
+        );
+      }
+
+      const clientIP = getClientIP(request);
+      const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIP);
+      
+      if (!turnstileResult.success) {
+        console.warn('Turnstile verification failed for registration attempt:', turnstileResult.error);
+        return NextResponse.json(
+          { error: 'Security verification failed. Please try again.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if user already exists

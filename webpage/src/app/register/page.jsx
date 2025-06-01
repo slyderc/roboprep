@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -16,9 +16,92 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const [turnstileWidgetId, setTurnstileWidgetId] = useState(null);
+  const [isClient, setIsClient] = useState(false);
   
   const { register } = useAuth();
   const router = useRouter();
+
+  // Check if we should show Turnstile based on environment (after hydration)
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isLocalDevelopment = isClient && isDevelopment &&
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1');
+  
+  // Show Turnstile when site key exists and not in local development
+  const shouldShowTurnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !isLocalDevelopment;
+
+  // Set client state after hydration to prevent hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Handle Turnstile widget initialization
+  useEffect(() => {
+    if (!shouldShowTurnstile) {
+      // Set a dummy token for localhost/development
+      setTurnstileToken('development-bypass');
+      return;
+    }
+
+    // Define callback function globally
+    window.onTurnstileSuccess = (token) => {
+      console.log('Turnstile success callback received token:', token ? 'Yes' : 'No');
+      setTurnstileToken(token);
+    };
+
+    // Initialize Turnstile widget when the script is loaded
+    const initTurnstile = () => {
+      if (window.turnstile && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+        const widgetId = window.turnstile.render('#turnstile-widget-register', {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          callback: 'onTurnstileSuccess',
+        });
+        setTurnstileWidgetId(widgetId);
+      }
+    };
+
+    // Check if Turnstile is already loaded
+    if (window.turnstile) {
+      initTurnstile();
+    } else {
+      // Wait for Turnstile script to load
+      const script = document.querySelector('script[src*="turnstile"]');
+      if (script) {
+        script.addEventListener('load', initTurnstile);
+      }
+    }
+
+    return () => {
+      // Cleanup Turnstile widget and callback
+      if (window.turnstile && turnstileWidgetId !== null) {
+        try {
+          window.turnstile.remove(turnstileWidgetId);
+        } catch (err) {
+          console.warn('Could not remove Turnstile widget:', err);
+        }
+      }
+      delete window.onTurnstileSuccess;
+      setTurnstileWidgetId(null);
+      setTurnstileToken(null);
+    };
+  }, [shouldShowTurnstile]);
+
+  // Additional cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any remaining Turnstile widgets on unmount
+      if (window.turnstile && turnstileWidgetId !== null) {
+        try {
+          window.turnstile.remove(turnstileWidgetId);
+        } catch (err) {
+          console.warn('Could not remove Turnstile widget on unmount:', err);
+        }
+      }
+      delete window.onTurnstileSuccess;
+    };
+  }, [turnstileWidgetId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,13 +125,39 @@ export default function RegisterPage() {
     }
     
     setIsLoading(true);
+
+    // Get the current token or try fallback
+    let currentToken = turnstileToken;
+    
+    // Check if Turnstile token is available (only for production)
+    if (shouldShowTurnstile && !currentToken) {
+      // Try to get token directly from Turnstile widget as fallback
+      if (window.turnstile && turnstileWidgetId !== null) {
+        try {
+          currentToken = window.turnstile.getResponse(turnstileWidgetId);
+          console.log('Retrieved fallback token for registration:', currentToken ? 'Yes' : 'No');
+          if (currentToken) {
+            setTurnstileToken(currentToken);
+          }
+        } catch (err) {
+          console.warn('Could not get Turnstile response:', err);
+        }
+      }
+      
+      if (!currentToken) {
+        setError('Please complete the security verification.');
+        setIsLoading(false);
+        return;
+      }
+    }
     
     try {
       const result = await register(
         formData.email, 
         formData.password,
         formData.firstName,
-        formData.lastName
+        formData.lastName,
+        currentToken
       );
       
       if (result.success) {
@@ -184,6 +293,25 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
+
+          {/* Turnstile Widget - Only show in production */}
+          {shouldShowTurnstile && (
+            <div className="flex justify-center">
+              <div 
+                id="turnstile-widget-register"
+                className="cf-turnstile" 
+                data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                data-callback="onTurnstileSuccess"
+              ></div>
+            </div>
+          )}
+          
+          {/* Development Notice - only show after hydration */}
+          {isClient && !shouldShowTurnstile && isLocalDevelopment && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+              Development mode - Security verification bypassed
+            </div>
+          )}
 
           <div>
             <button
