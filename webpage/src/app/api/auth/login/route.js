@@ -58,7 +58,6 @@ export async function POST(request) {
       }
     }
     
-    console.log(`Login attempt for email: ${email}`);
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -106,9 +105,6 @@ export async function POST(request) {
       domain: '', // Empty string uses the current domain
     };
     
-    // Debug information for cookies
-    console.log(`Creating cookie for session: ${session.token.substring(0, 10)}...`);
-    console.log('Cookie options:', cookieOptions);
     
     // Get request info for debugging
     const requestHeaders = headers();
@@ -143,7 +139,6 @@ export async function POST(request) {
       sameSite: 'lax'
     });
     
-    console.log(`Set cookie: ${cookieName}=${session.token.substring(0, 10)}... on host: ${requestHost}`);
     
     return response;
   } catch (error) {

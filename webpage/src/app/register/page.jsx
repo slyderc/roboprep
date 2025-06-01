@@ -59,7 +59,6 @@ export default function RegisterPage() {
 
   // Turnstile success handler
   const handleTurnstileSuccess = (token) => {
-    console.log('Turnstile success callback received, token:', token ? 'Present' : 'Missing');
     setTurnstileValidated(true);
   };
 

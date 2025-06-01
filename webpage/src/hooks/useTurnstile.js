@@ -42,7 +42,6 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
     
     // Create unique callback functions
     const callback = (token) => {
-      console.log(`Turnstile success callback (${widgetId}) received token:`, token ? 'Yes' : 'No');
       setTurnstileToken(token);
       if (onSuccessRef.current) {
         onSuccessRef.current(token);
@@ -50,7 +49,6 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
     };
     
     const errorCallback = () => {
-      console.log(`Turnstile error callback (${widgetId})`);
       if (onErrorRef.current) {
         onErrorRef.current();
       }
@@ -102,7 +100,6 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
       if (window.turnstile && turnstileWidgetId !== null) {
         try {
           currentToken = window.turnstile.getResponse(turnstileWidgetId);
-          console.log(`Retrieved fallback token (${widgetId}):`, currentToken ? 'Yes' : 'No');
           if (currentToken) {
             setTurnstileToken(currentToken);
           }

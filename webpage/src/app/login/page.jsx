@@ -39,15 +39,6 @@ function LoginForm() {
     // Allow submission if basic form is valid AND either Turnstile is validated OR there's a Turnstile error
     const isValid = basicFormValid && (turnstileValidated || turnstileError);
     
-    // Debug logging for form validation state
-    console.log('Form validation state:', {
-      email: !!email.trim(),
-      password: !!password.trim(),
-      emailValid: emailValidation?.isValid,
-      turnstileValid: turnstileValidated,
-      turnstileError: turnstileError,
-      overall: isValid
-    });
     
     return isValid;
   };
@@ -66,7 +57,6 @@ function LoginForm() {
 
   // Handle Turnstile success
   const handleTurnstileSuccess = (token) => {
-    console.log('Turnstile success callback received, token:', token ? 'Present' : 'Missing');
     setTurnstileValidated(true);
   };
 
@@ -85,11 +75,9 @@ function LoginForm() {
     }
     
     try {
-      console.log('Attempting login with email:', email);
       const result = await login(email, password, token);
       
       if (result.success) {
-        console.log('Login successful, redirecting to:', '/main');
         // Add a small delay to ensure cookie is set before redirecting
         setTimeout(() => {
           window.location.href = '/main';
