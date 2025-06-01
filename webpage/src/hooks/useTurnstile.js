@@ -17,9 +17,6 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
   
   const shouldShowTurnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !isLocalDevelopment;
   
-  // Generate unique callback names to avoid conflicts
-  const callbackName = `onTurnstileSuccess_${widgetId.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  const errorCallbackName = `onTurnstileError_${widgetId.replace(/[^a-zA-Z0-9]/g, '_')}`;
   
   useEffect(() => {
     setIsClient(true);
@@ -60,8 +57,6 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
     };
     
     callbackRef.current = callback;
-    window[callbackName] = callback;
-    window[errorCallbackName] = errorCallback;
     
     const initTurnstile = () => {
       if (window.turnstile && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
@@ -69,8 +64,8 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
         if (element && !element.hasChildNodes()) {
           const widget = window.turnstile.render(`#${widgetId}`, {
             sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-            callback: callbackName,
-            'error-callback': errorCallbackName,
+            callback: callback,
+            'error-callback': errorCallback,
           });
           setTurnstileWidgetId(widget);
         }
@@ -94,12 +89,10 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, on
           console.warn('Could not remove Turnstile widget:', err);
         }
       }
-      delete window[callbackName];
-      delete window[errorCallbackName];
       setTurnstileWidgetId(null);
       setTurnstileToken(null);
     };
-  }, [shouldShowTurnstile, widgetId, callbackName]); // Removed onSuccess to prevent re-renders
+  }, [shouldShowTurnstile, widgetId]); // Removed onSuccess to prevent re-renders
   
   // Token validation utility
   const validateAndGetToken = () => {
