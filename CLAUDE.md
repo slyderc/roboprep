@@ -52,10 +52,12 @@ The repository is organized into two main sections:
 - **Frontend Framework**: React with Next.js 14
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
-- **Authentication**: JWT-based multi-user authentication
+- **Authentication**: JWT-based multi-user authentication with bcrypt password hashing
+- **Security**: Cloudflare Turnstile bot protection for registration and login
 - **Data Persistence**: SQLite database with Prisma ORM
 - **API Layer**: Next.js API routes
 - **AI Integration**: OpenAI API integration
+- **Build System**: Optimized build process with warning suppression
 
 ### Key Components
 
@@ -99,6 +101,13 @@ The repository is organized into two main sections:
    - Theme preference saved in user settings
    - CSS variables for responsive sizing and theming
 
+6. **Security & Authentication**
+   - Cloudflare Turnstile integration for bot protection
+   - JWT-based session management with secure cookies
+   - Reusable Turnstile components and hooks for consistent implementation
+   - Environment-based security (production vs. development)
+   - User session isolation and secure password storage
+
 ### Core Files
 
 - `/webpage/prisma/`: Database schema and migrations
@@ -116,15 +125,22 @@ The repository is organized into two main sections:
   - `ResponseModal.jsx`: Displays OpenAI responses
   - `ResponseHistoryModal.jsx`: Manages saved responses
   - `ResponseListModal.jsx`: Lists all responses for a prompt
+  - `TurnstileWidget.jsx`: Reusable Turnstile security component
+  - `AccountInfo.jsx`: User account information and management
+- `/webpage/src/hooks/`: Custom React hooks
+  - `useTurnstile.js`: Reusable hook for Turnstile integration and bot protection
 - `/webpage/src/context/`: React Context providers
   - `PromptContext.jsx`: Handles prompt and response management
   - `AuthContext.jsx`: Handles user authentication and session management
+  - `SettingsContext.jsx`: User preferences and theme management
 - `/webpage/src/lib/`: Utility functions and helpers
   - `db.js`: Database connection and helper functions
   - `storage.js`: Database wrapper with localStorage-compatible API
   - `openaiService.js`: OpenAI API integration
   - `apiClient.js`: Client-side API wrapper
   - `auth.js`: Authentication utilities and JWT handling
+  - `turnstile.js`: Turnstile verification and security utilities
+  - `toastUtil.js`: Toast notification management
 - `/webpage/src/styles/`: Global CSS and theme definitions
   - `globals.css`: Contains theme variables and global styles
 
@@ -146,6 +162,13 @@ DATABASE_URL="file:../roboprep.db"
 # Authentication settings
 JWT_SECRET="your-secure-random-secret-key"
 JWT_EXPIRATION="12h"
+COOKIE_NAME="robo_auth"
+COOKIE_SECURE=true
+COOKIE_HTTP_ONLY=true
+
+# Cloudflare Turnstile Settings (Production Only)
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key
+TURNSTILE_SECRET_KEY=your_turnstile_secret_key
 ```
 
 ### Response Structure
@@ -209,6 +232,54 @@ Variable placeholders now use modern, relevant examples:
 - City: "Seattle"
 - Genre: "goth, synth-wave, indie-rock, etc."
 
+## Security & Bot Protection
+
+### Turnstile Integration
+The application includes Cloudflare Turnstile integration for bot protection on registration and login pages:
+
+- **Environment-Aware**: Automatically activates in production, bypasses in development
+- **Reusable Architecture**: Uses `useTurnstile` hook and `TurnstileWidget` component
+- **Fallback Token Retrieval**: Multiple methods to ensure token detection works reliably
+- **Unique Callbacks**: Prevents conflicts when multiple widgets exist
+- **Automatic Cleanup**: Proper widget removal to prevent memory leaks
+
+### Turnstile Implementation Details
+
+#### useTurnstile Hook (`/webpage/src/hooks/useTurnstile.js`)
+Custom hook that provides:
+- Environment detection (production vs. development)
+- Widget initialization and cleanup
+- Token validation with fallback retrieval
+- Unique callback management to prevent conflicts
+
+#### TurnstileWidget Component (`/webpage/src/components/TurnstileWidget.jsx`)
+Reusable component that:
+- Renders Turnstile widget in production
+- Shows development bypass message in local development
+- Handles responsive layout and theming
+- Provides consistent UI across all forms
+
+#### Security Features
+- **Production Only**: Turnstile only activates when `TURNSTILE_SECRET_KEY` exists and not in local development
+- **IP Verification**: Backend validates Turnstile tokens with client IP addresses
+- **Rate Limiting**: Built-in protection against rapid-fire requests
+- **Token Uniqueness**: Each widget gets unique callback names to prevent interference
+
+### Build System Optimizations
+
+The application includes optimized build configurations:
+
+#### Available Build Scripts
+- `npm run build`: Production build with warning suppression (recommended)
+- `npm run build:quiet`: Minimal output for CI/CD environments  
+- `npm run build:strict`: Full warnings for debugging
+
+#### Build Configuration Features
+- **ESLint Suppression**: `DISABLE_ESLINT_PLUGIN=true` for faster builds
+- **Telemetry Disabled**: `NEXT_TELEMETRY_DISABLED=1` for privacy
+- **Warning Filtering**: Configured to show only critical errors
+- **Clean Output**: Stderr redirection with fallback for cleaner console output
+
 ## Future Development
 
 ### API Implementation Plan
@@ -258,6 +329,8 @@ The web application uses these key components:
 - `ResponseModal.jsx`: Displays and manages OpenAI responses
 - `ResponseHistoryModal.jsx`: Displays saved response history with editing
 - `ResponseListModal.jsx`: Lists all responses for a prompt with variables display
+- `TurnstileWidget.jsx`: Reusable Turnstile security widget with environment detection
+- `AccountInfo.jsx`: User account information and management interface
 
 Key design patterns:
 - Consistent styling between light and dark modes
@@ -273,8 +346,12 @@ When adding new features:
 2. Maintain consistent functionality between both versions when applicable
 3. Use Tailwind CSS for styling
 4. Follow established patterns for state management
-5. Update this guide if necessary
-6. Ensure both light and dark themes are supported
+5. Consider creating reusable hooks (like `useTurnstile`) for complex logic
+6. Create reusable components for consistent UI patterns
+7. Update this guide if necessary
+8. Ensure both light and dark themes are supported
+9. Test in both development and production environments
+10. Consider security implications, especially for authentication-related features
 
 ### Common Tasks
 
@@ -309,6 +386,13 @@ When adding new features:
    - Error handling and retry logic for rate limits
    - New response generation without closing the modal
 
+6. **Security and Authentication**:
+   - Turnstile integration using `useTurnstile` hook and `TurnstileWidget` component
+   - JWT session management with secure cookies
+   - User registration and login with bot protection
+   - Environment-based security configuration
+   - Admin interface for user management
+
 ## Testing
 
 ### Chrome Extension
@@ -340,3 +424,14 @@ When adding new features:
    - Verify proper error handling for API failures
    - Test database connection error recovery
    - Verify graceful handling of missing environment variables
+7. Security and authentication:
+   - Test user registration and login with Turnstile verification
+   - Verify bot protection works in production environment
+   - Test JWT session management and logout functionality
+   - Verify admin interface access controls
+   - Test password hashing and security measures
+8. Build system:
+   - Test different build configurations (`npm run build`, `build:quiet`, `build:strict`)
+   - Verify warning suppression works correctly
+   - Check that production builds include all necessary files
+   - Test that development and production environments behave correctly
