@@ -4,50 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains both a Chrome extension and a web application version of "Robo Show Prep from RadioDJ Dude". The tool helps radio DJs quickly generate AI-powered show preparation content through a library of customizable prompts that DJs can use to create radio-ready content like artist bios, music facts, weather reports, and various show segments. The web application now features direct OpenAI integration for generating content without leaving the app.
+This repository contains a web application version of "Robo Show Prep from RadioDJ Dude". The tool helps radio DJs quickly generate AI-powered show preparation content through a library of customizable prompts that DJs can use to create radio-ready content like artist bios, music facts, weather reports, and various show segments. The web application now features direct OpenAI integration for generating content without leaving the app.
 
 ## Repository Structure
 
-The repository is organized into two main sections:
-- Root directory: Contains the original Chrome extension (manifest v3)
-- `/webpage/` directory: Contains the newer Next.js web application version with OpenAI API integration
+- Root directory: Contains the documentation
+- `/webpage/` directory: Contains the Next.js web application version with OpenAI API integration
 
-## Chrome Extension Architecture
-
-### Key Components
-
-1. **User Interface**
-   - **Popup**: Quick access interface (`popup/popup.html`, `popup/popup.js`)
-   - **Sidebar**: Persistent panel interface (`sidebar/sidebar.html`, `sidebar/sidebar.js`)
-   - **Floating Window**: Expanded interface launched from either UI
-
-2. **Data Management**
-   - Prompt data is stored in Chrome's local storage
-   - Data structures include:
-     - `userPrompts`: User-created prompts
-     - `corePrompts`: Built-in prompts loaded from `content/prompts.json`
-     - `favorites`: IDs of favorited prompts
-     - `recentlyUsed`: Recently used prompt IDs
-     - `userCategories`: User-created categories
-     - `settings`: User preferences
-
-3. **Prompt System**
-   - Prompts contain template variables in `{{variable_name}}` format
-   - Variables are replaced with user input when prompts are used
-   - Special handling for time-related variables
-
-### Core Files
-
-- `manifest.json`: Extension configuration
-- `background.js`: Background service worker for initialization
-- `popup/popup.js`: Main popup UI controller
-- `sidebar/sidebar.js`: Sidebar panel controller
-- `content/prompts.json`: Pre-defined prompts
-- `components/*.js`: Reusable UI components
-
-## Web Application Architecture
-
-### Technology Stack
+## Technology Stack
 
 - **Frontend Framework**: React with Next.js 14
 - **Styling**: Tailwind CSS
@@ -59,7 +23,7 @@ The repository is organized into two main sections:
 - **AI Integration**: OpenAI API integration
 - **Build System**: Optimized build process with warning suppression
 
-### Key Components
+## Key Components
 
 1. **User Interface**
    - Single-page responsive application with dark/light theme support
@@ -108,7 +72,7 @@ The repository is organized into two main sections:
    - Environment-based security (production vs. development)
    - User session isolation and secure password storage
 
-### Core Files
+## Core Files
 
 - `/webpage/prisma/`: Database schema and migrations
   - `schema.prisma`: Database model definitions
@@ -213,19 +177,19 @@ The application now includes enhanced visual feedback:
   - Preview: Blue with eye icon (`bg-blue-600`)
   - New Response: Purple (`bg-purple-600`)
 
-- **Prompt Card Indicators**: 
+- **Prompt Card Indicators**:
   - Visual indicators for prompts without variables
   - Informative tooltips explaining interaction behavior
   - Hover effects for clickable elements
 
-- **Button Layout**: 
+- **Button Layout**:
   - Cancel buttons positioned on the far left
   - Action buttons grouped on the right
   - Consistent spacing and sizing
 
 ### Updated Placeholder Examples
 Variable placeholders now use modern, relevant examples:
-- Artist: "Urban Heat" 
+- Artist: "Urban Heat"
 - Song: "Shake The Disease"
 - Album: "Violator"
 - Station: "KEXP"
@@ -271,7 +235,7 @@ The application includes optimized build configurations:
 
 #### Available Build Scripts
 - `npm run build`: Production build with warning suppression (recommended)
-- `npm run build:quiet`: Minimal output for CI/CD environments  
+- `npm run build:quiet`: Minimal output for CI/CD environments
 - `npm run build:strict`: Full warnings for debugging
 
 #### Build Configuration Features
@@ -342,16 +306,14 @@ Key design patterns:
 ### Adding New Features
 
 When adding new features:
-1. Decide whether the feature belongs in both the extension and web app
-2. Maintain consistent functionality between both versions when applicable
-3. Use Tailwind CSS for styling
-4. Follow established patterns for state management
-5. Consider creating reusable hooks (like `useTurnstile`) for complex logic
-6. Create reusable components for consistent UI patterns
-7. Update this guide if necessary
-8. Ensure both light and dark themes are supported
-9. Test in both development and production environments
-10. Consider security implications, especially for authentication-related features
+1. Use Tailwind CSS for styling
+2. Follow established patterns for state management
+3. Consider creating reusable hooks (like `useTurnstile`) for complex logic
+4. Create reusable components for consistent UI patterns
+5. Update this guide if necessary
+6. Ensure both light and dark themes are supported
+7. Test in both development and production environments
+8. Consider security implications, especially for authentication-related features
 
 ### Common Tasks
 
@@ -394,12 +356,6 @@ When adding new features:
    - Admin interface for user management
 
 ## Testing
-
-### Chrome Extension
-1. Load the extension in Chrome's developer mode
-2. Open the popup and sidebar interfaces
-3. Test all prompt functionality
-4. Verify data persistence using Chrome's storage inspector
 
 ### Web Application
 1. Run the development server with `npm run dev`
