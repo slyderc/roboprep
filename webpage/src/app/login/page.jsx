@@ -44,6 +44,7 @@ function LoginForm() {
 
     // Define callback function globally
     window.onTurnstileSuccess = (token) => {
+      console.log('Turnstile success callback received token:', token ? 'Yes' : 'No');
       setTurnstileToken(token);
     };
 
@@ -82,9 +83,23 @@ function LoginForm() {
     
     // Check if Turnstile token is available (only for production)
     if (shouldShowTurnstile && !turnstileToken) {
-      setError('Please complete the security verification.');
-      setIsLoading(false);
-      return;
+      // Try to get token directly from Turnstile widget as fallback
+      let fallbackToken = null;
+      if (window.turnstile && turnstileWidgetId !== null) {
+        try {
+          fallbackToken = window.turnstile.getResponse(turnstileWidgetId);
+        } catch (err) {
+          console.warn('Could not get Turnstile response:', err);
+        }
+      }
+      
+      if (!fallbackToken) {
+        setError('Please complete the security verification.');
+        setIsLoading(false);
+        return;
+      } else {
+        setTurnstileToken(fallbackToken);
+      }
     }
     
     try {
