@@ -5,6 +5,7 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
   const [turnstileWidgetId, setTurnstileWidgetId] = useState(null);
   const [isClient, setIsClient] = useState(false);
   const callbackRef = useRef(null);
+  const onSuccessRef = useRef(onSuccess);
   
   // Environment detection
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -22,11 +23,16 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
     setIsClient(true);
   }, []);
   
+  // Update the ref when onSuccess changes
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+  
   useEffect(() => {
     if (!shouldShowTurnstile) {
       setTurnstileToken('development-bypass');
-      if (onSuccess) {
-        onSuccess('development-bypass');
+      if (onSuccessRef.current) {
+        onSuccessRef.current('development-bypass');
       }
       return;
     }
@@ -35,8 +41,8 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
     const callback = (token) => {
       console.log(`Turnstile success callback (${widgetId}) received token:`, token ? 'Yes' : 'No');
       setTurnstileToken(token);
-      if (onSuccess) {
-        onSuccess(token);
+      if (onSuccessRef.current) {
+        onSuccessRef.current(token);
       }
     };
     
@@ -77,7 +83,7 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
       setTurnstileWidgetId(null);
       setTurnstileToken(null);
     };
-  }, [shouldShowTurnstile, widgetId, callbackName, onSuccess]);
+  }, [shouldShowTurnstile, widgetId, callbackName]); // Removed onSuccess to prevent re-renders
   
   // Token validation utility
   const validateAndGetToken = () => {
