@@ -1,8 +1,8 @@
 import { useTurnstile } from '@/hooks/useTurnstile';
 import { forwardRef, useImperativeHandle } from 'react';
 
-const TurnstileWidget = forwardRef(({ widgetId = 'turnstile-widget', className = '', onSuccess }, ref) => {
-  const { shouldShowTurnstile, isLocalDevelopment, isClient, widgetProps, validateAndGetToken } = useTurnstile(widgetId, onSuccess);
+const TurnstileWidget = forwardRef(({ widgetId = 'turnstile-widget', className = '', onSuccess, onError }, ref) => {
+  const { shouldShowTurnstile, isLocalDevelopment, isClient, widgetProps, validateAndGetToken } = useTurnstile(widgetId, onSuccess, onError);
   
   useImperativeHandle(ref, () => ({
     validateAndGetToken

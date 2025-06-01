@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
+export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null, onError = null) {
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [turnstileWidgetId, setTurnstileWidgetId] = useState(null);
   const [isClient, setIsClient] = useState(false);
   const callbackRef = useRef(null);
   const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
   
   // Environment detection
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -16,17 +17,22 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
   
   const shouldShowTurnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !isLocalDevelopment;
   
-  // Generate unique callback name to avoid conflicts
+  // Generate unique callback names to avoid conflicts
   const callbackName = `onTurnstileSuccess_${widgetId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const errorCallbackName = `onTurnstileError_${widgetId.replace(/[^a-zA-Z0-9]/g, '_')}`;
   
   useEffect(() => {
     setIsClient(true);
   }, []);
   
-  // Update the ref when onSuccess changes
+  // Update the refs when callbacks change
   useEffect(() => {
     onSuccessRef.current = onSuccess;
   }, [onSuccess]);
+  
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
   
   useEffect(() => {
     if (!shouldShowTurnstile) {
@@ -37,7 +43,7 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
       return;
     }
     
-    // Create unique callback function
+    // Create unique callback functions
     const callback = (token) => {
       console.log(`Turnstile success callback (${widgetId}) received token:`, token ? 'Yes' : 'No');
       setTurnstileToken(token);
@@ -46,8 +52,16 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
       }
     };
     
+    const errorCallback = () => {
+      console.log(`Turnstile error callback (${widgetId})`);
+      if (onErrorRef.current) {
+        onErrorRef.current();
+      }
+    };
+    
     callbackRef.current = callback;
     window[callbackName] = callback;
+    window[errorCallbackName] = errorCallback;
     
     const initTurnstile = () => {
       if (window.turnstile && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
@@ -56,6 +70,7 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
           const widget = window.turnstile.render(`#${widgetId}`, {
             sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
             callback: callbackName,
+            'error-callback': errorCallbackName,
           });
           setTurnstileWidgetId(widget);
         }
@@ -80,6 +95,7 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
         }
       }
       delete window[callbackName];
+      delete window[errorCallbackName];
       setTurnstileWidgetId(null);
       setTurnstileToken(null);
     };
@@ -120,7 +136,8 @@ export function useTurnstile(widgetId = 'turnstile-widget', onSuccess = null) {
       id: widgetId,
       className: "cf-turnstile",
       'data-sitekey': process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-      'data-callback': callbackName
+      'data-callback': callbackName,
+      'data-error-callback': errorCallbackName
     }
   };
 }

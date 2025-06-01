@@ -15,6 +15,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailValidation, setEmailValidation] = useState(null);
   const [turnstileValidated, setTurnstileValidated] = useState(false);
+  const [turnstileError, setTurnstileError] = useState(false);
   
   const { login } = useAuth();
   const router = useRouter();
@@ -29,12 +30,26 @@ function LoginForm() {
 
   // Check if form is valid for submission
   const isFormValid = () => {
-    return (
+    const basicFormValid = (
       email.trim() &&
       password.trim() &&
-      emailValidation?.isValid &&
-      turnstileValidated
+      emailValidation?.isValid
     );
+    
+    // Allow submission if basic form is valid AND either Turnstile is validated OR there's a Turnstile error
+    const isValid = basicFormValid && (turnstileValidated || turnstileError);
+    
+    // Debug logging for form validation state
+    console.log('Form validation state:', {
+      email: !!email.trim(),
+      password: !!password.trim(),
+      emailValid: emailValidation?.isValid,
+      turnstileValid: turnstileValidated,
+      turnstileError: turnstileError,
+      overall: isValid
+    });
+    
+    return isValid;
   };
 
   // Handle email change
@@ -51,6 +66,7 @@ function LoginForm() {
 
   // Handle Turnstile success
   const handleTurnstileSuccess = (token) => {
+    console.log('Turnstile success callback received, token:', token ? 'Present' : 'Missing');
     setTurnstileValidated(true);
   };
 
@@ -170,7 +186,18 @@ function LoginForm() {
           </div>
 
           {/* Turnstile Widget */}
-          <TurnstileWidget ref={turnstileRef} widgetId="turnstile-widget" onSuccess={handleTurnstileSuccess} />
+          <TurnstileWidget 
+            ref={turnstileRef} 
+            widgetId="turnstile-widget" 
+            onSuccess={handleTurnstileSuccess}
+            onError={() => setTurnstileError(true)}
+          />
+          
+          {turnstileError && (
+            <div className="text-sm text-yellow-600 dark:text-yellow-400 text-center">
+              ⚠️ Security verification having issues. You can still attempt to sign in.
+            </div>
+          )}
 
           <div>
             <button
