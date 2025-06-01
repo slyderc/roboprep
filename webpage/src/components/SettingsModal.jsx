@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './ui/Modal';
 import { Button, IconButton } from './ui/Button';
-import { Input, Label, FormGroup } from './ui/Input';
+import { Input } from './ui/Input';
 import { usePrompts } from '../context/PromptContext';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { exportPromptData, importPromptData } from '../lib/importExportUtil';
 import { showToast } from '../lib/toastUtil';
 import { AccountInfo } from './AccountInfo';
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
+import { passwordValidation, passwordMatch } from '../lib/validation';
 
 export function SettingsModal({ isOpen, onClose }) {
   const { settings, updateSettings } = useSettings();
@@ -21,7 +23,7 @@ export function SettingsModal({ isOpen, onClose }) {
     deleteCategory,
     refreshData
   } = usePrompts();
-  const { user, changePassword, logout } = useAuth();
+  const { user, changePassword } = useAuth();
   
   const [fontSize, setFontSize] = useState(settings.fontSize || 'medium');
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -35,6 +37,7 @@ export function SettingsModal({ isOpen, onClose }) {
     confirmNewPassword: ''
   });
   const [passwordError, setPasswordError] = useState('');
+  const [passwordValidationState, setPasswordValidationState] = useState(null);
   const [activeTab, setActiveTab] = useState('display');
 
   // Update fontSize state when settings change
@@ -173,27 +176,37 @@ export function SettingsModal({ isOpen, onClose }) {
     }
   };
   
+  // Password validation handler
+  const handlePasswordValidation = (validation) => {
+    setPasswordValidationState(validation);
+  };
+
+  // Check password match
+  const getPasswordMatchValidation = () => {
+    if (passwordData.confirmNewPassword) {
+      return passwordMatch.validate(passwordData.newPassword, passwordData.confirmNewPassword);
+    }
+    return null;
+  };
+
   const handlePasswordChange = async () => {
     setPasswordError('');
     
-    // Validate passwords
+    // Comprehensive client-side validation
     if (!passwordData.currentPassword) {
       setPasswordError('Current password is required');
       return;
     }
     
-    if (!passwordData.newPassword) {
-      setPasswordError('New password is required');
+    const passwordValid = passwordValidation.validate(passwordData.newPassword);
+    if (!passwordValid.isValid) {
+      setPasswordError(passwordValid.errors[0] || 'Password does not meet requirements');
       return;
     }
     
-    if (passwordData.newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long');
-      return;
-    }
-    
-    if (passwordData.newPassword !== passwordData.confirmNewPassword) {
-      setPasswordError('New passwords do not match');
+    const passwordsMatch = passwordMatch.validate(passwordData.newPassword, passwordData.confirmNewPassword);
+    if (!passwordsMatch.isValid) {
+      setPasswordError(passwordsMatch.error || 'Passwords do not match');
       return;
     }
     
@@ -201,12 +214,13 @@ export function SettingsModal({ isOpen, onClose }) {
     const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
     
     if (result.success) {
-      // Reset form
+      // Reset form and validation state
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmNewPassword: ''
       });
+      setPasswordValidationState(null);
       showToast('Password changed successfully');
     } else {
       setPasswordError(result.error || 'Failed to change password');
@@ -221,12 +235,6 @@ export function SettingsModal({ isOpen, onClose }) {
     }));
   };
   
-  const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to log out?')) {
-      await logout();
-      // Redirect will be handled by the auth context
-    }
-  };
   
   return (
     <Modal
@@ -534,34 +542,42 @@ export function SettingsModal({ isOpen, onClose }) {
               )}
               
               <div className="space-y-3">
-                <FormGroup>
-                  <Label htmlFor="currentPassword" className="text-gray-700 dark:text-gray-300">Current Password</Label>
+                <div className="relative">
                   <Input
                     id="currentPassword"
                     name="currentPassword"
                     type="password"
                     value={passwordData.currentPassword}
                     onChange={handlePasswordInputChange}
-                    placeholder="Enter your current password"
+                    placeholder="Current password"
                     className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                   />
-                </FormGroup>
+                </div>
                 
-                <FormGroup>
-                  <Label htmlFor="newPassword" className="text-gray-700 dark:text-gray-300">New Password</Label>
+                <div className="relative">
                   <Input
                     id="newPassword"
                     name="newPassword"
                     type="password"
                     value={passwordData.newPassword}
                     onChange={handlePasswordInputChange}
-                    placeholder="Enter new password"
-                    className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                    placeholder="New password"
+                    className={`dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${
+                      passwordValidationState?.isValid === true ? 'border-green-500 pr-10' :
+                      passwordValidationState?.isValid === false ? 'border-red-500' : ''
+                    }`}
                   />
-                </FormGroup>
+                  {passwordValidationState?.isValid && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                  <PasswordStrengthIndicator password={passwordData.newPassword} onValidationChange={handlePasswordValidation} />
+                </div>
                 
-                <FormGroup>
-                  <Label htmlFor="confirmNewPassword" className="text-gray-700 dark:text-gray-300">Confirm New Password</Label>
+                <div className="relative">
                   <Input
                     id="confirmNewPassword"
                     name="confirmNewPassword"
@@ -569,28 +585,28 @@ export function SettingsModal({ isOpen, onClose }) {
                     value={passwordData.confirmNewPassword}
                     onChange={handlePasswordInputChange}
                     placeholder="Confirm new password"
-                    className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                    className={`dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${
+                      getPasswordMatchValidation()?.isValid === true ? 'border-green-500 pr-10' :
+                      getPasswordMatchValidation()?.isValid === false ? 'border-red-500' : ''
+                    }`}
                   />
-                </FormGroup>
+                  {getPasswordMatchValidation()?.isValid && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
                 
                 <Button
                   variant="primary"
                   onClick={handlePasswordChange}
+                  disabled={!passwordValidationState?.isValid || !getPasswordMatchValidation()?.isValid || !passwordData.currentPassword}
                 >
                   Change Password
                 </Button>
               </div>
-            </div>
-            
-            {/* Logout */}
-            <div>
-              <Button
-                variant="secondary"
-                onClick={handleLogout}
-                className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
-              >
-                Log Out
-              </Button>
             </div>
           </section>
         )}
