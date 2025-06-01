@@ -18,15 +18,27 @@ export async function POST(request) {
       );
     }
 
-    // Verify Turnstile token (skip for API requests, localhost, or if not configured)
+    // Verify Turnstile token (skip for API requests, development, or if not configured)
     const isApiRequest = request.headers.get('user-agent')?.includes('API') || 
                         request.headers.get('x-api-key');
     
-    const host = request.headers.get('host') || '';
-    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1') || host.startsWith('192.168.');
+    // Better environment detection
     const isDevelopment = process.env.NODE_ENV === 'development';
+    const host = request.headers.get('host') || '';
+    const origin = request.headers.get('origin') || '';
     
-    if (!isApiRequest && !isLocalhost && !isDevelopment && process.env.TURNSTILE_SECRET_KEY) {
+    // Only bypass Turnstile for actual development environments
+    const isLocalDevelopment = isDevelopment && (
+      host.includes('localhost') || 
+      host.includes('127.0.0.1') || 
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    );
+    
+    // Enable Turnstile for production (when TURNSTILE_SECRET_KEY exists and not local dev)
+    const shouldUseTurnstile = process.env.TURNSTILE_SECRET_KEY && !isLocalDevelopment && !isApiRequest;
+    
+    if (shouldUseTurnstile) {
       if (!turnstileToken) {
         return NextResponse.json(
           { error: 'Security verification required' },

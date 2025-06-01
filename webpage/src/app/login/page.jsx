@@ -19,13 +19,14 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '/';
 
-  // Check if we should show Turnstile (not localhost/development)
-  const isLocalhost = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || 
-     window.location.hostname === '127.0.0.1' ||
-     window.location.hostname.startsWith('192.168.'));
+  // Check if we should show Turnstile based on environment
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const shouldShowTurnstile = !isLocalhost && !isDevelopment && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const isLocalDevelopment = typeof window !== 'undefined' && isDevelopment &&
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1');
+  
+  // Show Turnstile when site key exists and not in local development
+  const shouldShowTurnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !isLocalDevelopment;
 
   // Handle Turnstile widget initialization
   useEffect(() => {
@@ -181,7 +182,7 @@ export default function LoginPage() {
           )}
           
           {/* Development Notice */}
-          {!shouldShowTurnstile && isDevelopment && (
+          {!shouldShowTurnstile && isLocalDevelopment && (
             <div className="text-center text-sm text-gray-500 dark:text-gray-400">
               Development mode - Security verification bypassed
             </div>
