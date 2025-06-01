@@ -31,10 +31,9 @@
     "rimraf": "^5.0.5",
     "semver": "^7.7.2",
     "streamsearch": "^1.1.0",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^0.0.2",
     "@types/node": "^20.11.16",
     "@types/react": "^18.2.52",
     "@types/react-dom": "^18.2.18",
