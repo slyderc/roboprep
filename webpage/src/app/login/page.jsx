@@ -71,40 +71,68 @@ function LoginForm() {
     }
 
     return () => {
-      // Cleanup
+      // Cleanup Turnstile widget and callback
+      if (window.turnstile && turnstileWidgetId !== null) {
+        try {
+          window.turnstile.remove(turnstileWidgetId);
+        } catch (err) {
+          console.warn('Could not remove Turnstile widget:', err);
+        }
+      }
       delete window.onTurnstileSuccess;
+      setTurnstileWidgetId(null);
+      setTurnstileToken(null);
     };
   }, [shouldShowTurnstile]);
+
+  // Additional cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any remaining Turnstile widgets on unmount
+      if (window.turnstile && turnstileWidgetId !== null) {
+        try {
+          window.turnstile.remove(turnstileWidgetId);
+        } catch (err) {
+          console.warn('Could not remove Turnstile widget on unmount:', err);
+        }
+      }
+      delete window.onTurnstileSuccess;
+    };
+  }, [turnstileWidgetId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission
     setError('');
     setIsLoading(true);
     
+    // Get the current token or try fallback
+    let currentToken = turnstileToken;
+    
     // Check if Turnstile token is available (only for production)
-    if (shouldShowTurnstile && !turnstileToken) {
+    if (shouldShowTurnstile && !currentToken) {
       // Try to get token directly from Turnstile widget as fallback
-      let fallbackToken = null;
       if (window.turnstile && turnstileWidgetId !== null) {
         try {
-          fallbackToken = window.turnstile.getResponse(turnstileWidgetId);
+          currentToken = window.turnstile.getResponse(turnstileWidgetId);
+          console.log('Retrieved fallback token:', currentToken ? 'Yes' : 'No');
+          if (currentToken) {
+            setTurnstileToken(currentToken);
+          }
         } catch (err) {
           console.warn('Could not get Turnstile response:', err);
         }
       }
       
-      if (!fallbackToken) {
+      if (!currentToken) {
         setError('Please complete the security verification.');
         setIsLoading(false);
         return;
-      } else {
-        setTurnstileToken(fallbackToken);
       }
     }
     
     try {
       console.log('Attempting login with email:', email);
-      const result = await login(email, password, turnstileToken);
+      const result = await login(email, password, currentToken);
       
       if (result.success) {
         console.log('Login successful, redirecting to:', '/main');
