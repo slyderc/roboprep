@@ -8,7 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import TurnstileWidget from '@/components/TurnstileWidget';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import EmailValidator from '@/components/EmailValidator';
-import { passwordValidation, emailValidation, passwordMatch } from '@/lib/validation';
+import { emailValidation } from '@/lib/validation';
+import { usePasswordValidation } from '@/hooks/usePasswordValidation';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -28,6 +29,16 @@ export default function RegisterPage() {
   const [turnstileValidated, setTurnstileValidated] = useState(false);
   const [turnstileError, setTurnstileError] = useState(false);
   
+  // Use password validation hook
+  const {
+    passwordValidationState,
+    handlePasswordValidation,
+    getPasswordMatchValidation,
+    validatePassword,
+    getPasswordInputStyling,
+    renderValidationCheckmark
+  } = usePasswordValidation();
+  
   const { register } = useAuth();
   const router = useRouter();
   const turnstileRef = useRef();
@@ -45,18 +56,6 @@ export default function RegisterPage() {
     setValidationStates(prev => ({ ...prev, email: validation }));
   };
 
-  const handlePasswordValidation = (validation) => {
-    setValidationStates(prev => ({ ...prev, password: validation }));
-  };
-
-  // Check password match whenever passwords change
-  const getPasswordMatchValidation = () => {
-    if (formData.confirmPassword) {
-      return passwordMatch.validate(formData.password, formData.confirmPassword);
-    }
-    return null;
-  };
-
   // Turnstile success handler
   const handleTurnstileSuccess = (token) => {
     setTurnstileValidated(true);
@@ -64,10 +63,11 @@ export default function RegisterPage() {
 
   // Check if form is valid for submission
   const isFormValid = () => {
+    const passwordMatchValidation = getPasswordMatchValidation(formData.password, formData.confirmPassword);
     const basicFormValid = (
       validationStates.email?.isValid &&
-      validationStates.password?.isValid &&
-      getPasswordMatchValidation()?.isValid &&
+      passwordValidationState?.isValid &&
+      passwordMatchValidation?.isValid &&
       formData.firstName.trim() &&
       formData.lastName.trim()
     );
@@ -91,8 +91,8 @@ export default function RegisterPage() {
     
     // Comprehensive client-side validation
     const emailValid = emailValidation.validate(formData.email);
-    const passwordValid = passwordValidation.validate(formData.password);
-    const passwordsMatch = passwordMatch.validate(formData.password, formData.confirmPassword);
+    const passwordValid = validatePassword(formData.password);
+    const passwordsMatch = getPasswordMatchValidation(formData.password, formData.confirmPassword);
     
     // Check email validation
     if (!emailValid.isValid) {
@@ -273,20 +273,13 @@ export default function RegisterPage() {
                     autoComplete="new-password"
                     required
                     className={`appearance-none rounded-md relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 ${
-                      validationStates.password?.isValid === true ? 'border-green-500 pr-10' :
-                      validationStates.password?.isValid === false ? 'border-red-500' : 'border-gray-300'
+                      getPasswordInputStyling(passwordValidationState?.isValid) || 'border-gray-300'
                     }`}
                     placeholder="Password"
                     value={formData.password}
                     onChange={handleChange}
                   />
-                  {validationStates.password?.isValid && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  {passwordValidationState?.isValid && renderValidationCheckmark()}
                 </div>
                 <PasswordStrengthIndicator password={formData.password} onValidationChange={handlePasswordValidation} />
               </div>
@@ -303,20 +296,13 @@ export default function RegisterPage() {
                     autoComplete="new-password"
                     required
                     className={`appearance-none rounded-md relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 ${
-                      getPasswordMatchValidation()?.isValid === true ? 'border-green-500 pr-10' :
-                      getPasswordMatchValidation()?.isValid === false ? 'border-red-500' : 'border-gray-300'
+                      getPasswordInputStyling(getPasswordMatchValidation(formData.password, formData.confirmPassword)?.isValid) || 'border-gray-300'
                     }`}
                     placeholder="Confirm Password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                   />
-                  {getPasswordMatchValidation()?.isValid && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  {getPasswordMatchValidation(formData.password, formData.confirmPassword)?.isValid && renderValidationCheckmark()}
                 </div>
               </div>
             </div>

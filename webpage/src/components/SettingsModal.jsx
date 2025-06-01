@@ -10,7 +10,7 @@ import { exportPromptData, importPromptData } from '../lib/importExportUtil';
 import { showToast } from '../lib/toastUtil';
 import { AccountInfo } from './AccountInfo';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
-import { passwordValidation, passwordMatch } from '../lib/validation';
+import { usePasswordValidation } from '../hooks/usePasswordValidation';
 
 export function SettingsModal({ isOpen, onClose }) {
   const { settings, updateSettings } = useSettings();
@@ -37,7 +37,16 @@ export function SettingsModal({ isOpen, onClose }) {
     confirmNewPassword: ''
   });
   const [passwordError, setPasswordError] = useState('');
-  const [passwordValidationState, setPasswordValidationState] = useState(null);
+  
+  // Use password validation hook
+  const {
+    passwordValidationState,
+    handlePasswordValidation,
+    getPasswordMatchValidation,
+    validatePassword,
+    getPasswordInputStyling,
+    renderValidationCheckmark
+  } = usePasswordValidation();
   const [activeTab, setActiveTab] = useState('display');
 
   // Update fontSize state when settings change
@@ -176,19 +185,6 @@ export function SettingsModal({ isOpen, onClose }) {
     }
   };
   
-  // Password validation handler
-  const handlePasswordValidation = (validation) => {
-    setPasswordValidationState(validation);
-  };
-
-  // Check password match
-  const getPasswordMatchValidation = () => {
-    if (passwordData.confirmNewPassword) {
-      return passwordMatch.validate(passwordData.newPassword, passwordData.confirmNewPassword);
-    }
-    return null;
-  };
-
   const handlePasswordChange = async () => {
     setPasswordError('');
     
@@ -198,13 +194,13 @@ export function SettingsModal({ isOpen, onClose }) {
       return;
     }
     
-    const passwordValid = passwordValidation.validate(passwordData.newPassword);
+    const passwordValid = validatePassword(passwordData.newPassword);
     if (!passwordValid.isValid) {
       setPasswordError(passwordValid.errors[0] || 'Password does not meet requirements');
       return;
     }
     
-    const passwordsMatch = passwordMatch.validate(passwordData.newPassword, passwordData.confirmNewPassword);
+    const passwordsMatch = getPasswordMatchValidation(passwordData.newPassword, passwordData.confirmNewPassword);
     if (!passwordsMatch.isValid) {
       setPasswordError(passwordsMatch.error || 'Passwords do not match');
       return;
@@ -214,13 +210,12 @@ export function SettingsModal({ isOpen, onClose }) {
     const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
     
     if (result.success) {
-      // Reset form and validation state
+      // Reset form (validation state will reset automatically when password is cleared)
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmNewPassword: ''
       });
-      setPasswordValidationState(null);
       showToast('Password changed successfully');
     } else {
       setPasswordError(result.error || 'Failed to change password');
@@ -563,17 +558,10 @@ export function SettingsModal({ isOpen, onClose }) {
                     onChange={handlePasswordInputChange}
                     placeholder="New password"
                     className={`dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${
-                      passwordValidationState?.isValid === true ? 'border-green-500 pr-10' :
-                      passwordValidationState?.isValid === false ? 'border-red-500' : ''
+                      getPasswordInputStyling(passwordValidationState?.isValid)
                     }`}
                   />
-                  {passwordValidationState?.isValid && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  {passwordValidationState?.isValid && renderValidationCheckmark()}
                   <PasswordStrengthIndicator password={passwordData.newPassword} onValidationChange={handlePasswordValidation} />
                 </div>
                 
@@ -586,23 +574,16 @@ export function SettingsModal({ isOpen, onClose }) {
                     onChange={handlePasswordInputChange}
                     placeholder="Confirm new password"
                     className={`dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${
-                      getPasswordMatchValidation()?.isValid === true ? 'border-green-500 pr-10' :
-                      getPasswordMatchValidation()?.isValid === false ? 'border-red-500' : ''
+                      getPasswordInputStyling(getPasswordMatchValidation(passwordData.newPassword, passwordData.confirmNewPassword)?.isValid)
                     }`}
                   />
-                  {getPasswordMatchValidation()?.isValid && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  {getPasswordMatchValidation(passwordData.newPassword, passwordData.confirmNewPassword)?.isValid && renderValidationCheckmark()}
                 </div>
                 
                 <Button
                   variant="primary"
                   onClick={handlePasswordChange}
-                  disabled={!passwordValidationState?.isValid || !getPasswordMatchValidation()?.isValid || !passwordData.currentPassword}
+                  disabled={!passwordValidationState?.isValid || !getPasswordMatchValidation(passwordData.newPassword, passwordData.confirmNewPassword)?.isValid || !passwordData.currentPassword}
                 >
                   Change Password
                 </Button>
