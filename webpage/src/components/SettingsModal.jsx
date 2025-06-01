@@ -8,7 +8,6 @@ import { useAuth } from '../context/AuthContext';
 // Import the utility functions
 import { exportPromptData, importPromptData } from '../lib/importExportUtil';
 import { showToast } from '../lib/toastUtil';
-import { AccountInfo } from './AccountInfo';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 import { usePasswordValidation } from '../hooks/usePasswordValidation';
 
@@ -515,14 +514,6 @@ export function SettingsModal({ isOpen, onClose }) {
         {activeTab === 'account' && (
           <section>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Account Settings</h3>
-            
-            {/* User Info */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">
-                Your Account
-              </h4>
-              <AccountInfo user={user} />
-            </div>
             
             {/* Change Password */}
             <div className="mb-4">
