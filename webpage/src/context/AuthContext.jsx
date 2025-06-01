@@ -92,7 +92,7 @@ export function AuthProvider({ children }) {
   };
 
   // Login user
-  const login = async (email, password) => {
+  const login = async (email, password, turnstileToken = null) => {
     try {
       setLoading(true);
       const response = await fetch('/api/auth/login', {
@@ -100,7 +100,7 @@ export function AuthProvider({ children }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstileToken }),
         credentials: 'include', // Important: include cookies with the request
       });
 

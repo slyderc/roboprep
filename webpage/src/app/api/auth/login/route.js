@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { comparePassword, createSession, generateToken } from '@/lib/auth';
+import { verifyTurnstileToken, getClientIP } from '@/lib/turnstile';
 import { cookies } from 'next/headers';
 import { headers } from 'next/headers';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, turnstileToken } = body;
 
     // Validate input
     if (!email || !password) {
@@ -15,6 +16,34 @@ export async function POST(request) {
         { error: 'Email and password are required' },
         { status: 400 }
       );
+    }
+
+    // Verify Turnstile token (skip for API requests, localhost, or if not configured)
+    const isApiRequest = request.headers.get('user-agent')?.includes('API') || 
+                        request.headers.get('x-api-key');
+    
+    const host = request.headers.get('host') || '';
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1') || host.startsWith('192.168.');
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (!isApiRequest && !isLocalhost && !isDevelopment && process.env.TURNSTILE_SECRET_KEY) {
+      if (!turnstileToken) {
+        return NextResponse.json(
+          { error: 'Security verification required' },
+          { status: 400 }
+        );
+      }
+
+      const clientIP = getClientIP(request);
+      const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIP);
+      
+      if (!turnstileResult.success) {
+        console.warn('Turnstile verification failed for login attempt:', turnstileResult.error);
+        return NextResponse.json(
+          { error: 'Security verification failed. Please try again.' },
+          { status: 400 }
+        );
+      }
     }
     
     console.log(`Login attempt for email: ${email}`);

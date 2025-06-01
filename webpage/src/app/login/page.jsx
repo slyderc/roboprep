@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,20 +11,78 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const [turnstileWidgetId, setTurnstileWidgetId] = useState(null);
   
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '/';
 
+  // Check if we should show Turnstile (not localhost/development)
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1' ||
+     window.location.hostname.startsWith('192.168.'));
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const shouldShowTurnstile = !isLocalhost && !isDevelopment && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  // Handle Turnstile widget initialization
+  useEffect(() => {
+    if (!shouldShowTurnstile) {
+      // Set a dummy token for localhost/development
+      setTurnstileToken('development-bypass');
+      return;
+    }
+
+    // Define callback function globally
+    window.onTurnstileSuccess = (token) => {
+      setTurnstileToken(token);
+    };
+
+    // Initialize Turnstile widget when the script is loaded
+    const initTurnstile = () => {
+      if (window.turnstile && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+        const widgetId = window.turnstile.render('#turnstile-widget', {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          callback: 'onTurnstileSuccess',
+        });
+        setTurnstileWidgetId(widgetId);
+      }
+    };
+
+    // Check if Turnstile is already loaded
+    if (window.turnstile) {
+      initTurnstile();
+    } else {
+      // Wait for Turnstile script to load
+      const script = document.querySelector('script[src*="turnstile"]');
+      if (script) {
+        script.addEventListener('load', initTurnstile);
+      }
+    }
+
+    return () => {
+      // Cleanup
+      delete window.onTurnstileSuccess;
+    };
+  }, [shouldShowTurnstile]);
+
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission
     setError('');
     setIsLoading(true);
     
+    // Check if Turnstile token is available (only for production)
+    if (shouldShowTurnstile && !turnstileToken) {
+      setError('Please complete the security verification.');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       console.log('Attempting login with email:', email);
-      const result = await login(email, password);
+      const result = await login(email, password, turnstileToken);
       
       if (result.success) {
         console.log('Login successful, redirecting to:', '/main');
@@ -109,6 +167,25 @@ export default function LoginPage() {
               />
             </div>
           </div>
+
+          {/* Turnstile Widget - Only show in production */}
+          {shouldShowTurnstile && (
+            <div className="flex justify-center">
+              <div 
+                id="turnstile-widget"
+                className="cf-turnstile" 
+                data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                data-callback="onTurnstileSuccess"
+              ></div>
+            </div>
+          )}
+          
+          {/* Development Notice */}
+          {!shouldShowTurnstile && isDevelopment && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+              Development mode - Security verification bypassed
+            </div>
+          )}
 
           <div>
             <button
