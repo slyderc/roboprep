@@ -125,16 +125,17 @@ async function upgrade_2_0_0_to_2_1_0() {
     }
     
     // Approve all existing users (they were created before approval system)
-    const unapprovedCount = await prisma.user.count({
-      where: { isApproved: false }
-    });
+    // Use raw SQL since Prisma client may not know about the new column yet
+    const unapprovedResult = await prisma.$queryRaw`
+      SELECT COUNT(*) as count FROM User WHERE isApproved = 0 OR isApproved IS NULL
+    `;
+    const unapprovedCount = unapprovedResult[0]?.count || 0;
     
     if (unapprovedCount > 0) {
       console.log(`Approving ${unapprovedCount} existing users`);
-      await prisma.user.updateMany({
-        where: { isApproved: false },
-        data: { isApproved: true }
-      });
+      await prisma.$executeRaw`
+        UPDATE User SET isApproved = 1 WHERE isApproved = 0 OR isApproved IS NULL
+      `;
       console.log('All existing users have been approved');
     } else {
       console.log('No users need approval');
