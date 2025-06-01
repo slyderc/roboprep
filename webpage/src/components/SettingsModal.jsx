@@ -21,7 +21,7 @@ export function SettingsModal({ isOpen, onClose }) {
     deleteCategory,
     refreshData
   } = usePrompts();
-  const { user, changePassword, logout, isAdmin } = useAuth();
+  const { user, changePassword, logout } = useAuth();
   
   const [fontSize, setFontSize] = useState(settings.fontSize || 'medium');
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -276,14 +276,6 @@ export function SettingsModal({ isOpen, onClose }) {
         >
           Data
         </button>
-        {isAdmin && (
-          <button
-            className={`px-4 py-2 font-medium text-sm ${activeTab === 'admin' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
-            onClick={() => setActiveTab('admin')}
-          >
-            Admin
-          </button>
-        )}
       </div>
       
       <div className="space-y-6">
@@ -652,28 +644,6 @@ export function SettingsModal({ isOpen, onClose }) {
           </section>
         )}
         
-        {/* Admin Tab - Only shown for admin users */}
-        {activeTab === 'admin' && isAdmin && (
-          <section>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Admin Panel</h3>
-            <p className="text-xs text-gray-600 mb-3">
-              User management and system settings. 
-            </p>
-            
-            <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded-md border border-blue-200 dark:border-blue-800 mb-4">
-              <p className="text-sm text-blue-700 dark:text-blue-200">
-                Admin functionality will be implemented in the next phase. Please visit the admin page directly for now.
-              </p>
-            </div>
-            
-            <Button
-              variant="primary"
-              onClick={() => window.location.href = '/admin'}
-            >
-              Go to Admin Panel
-            </Button>
-          </section>
-        )}
       </div>
     </Modal>
   );

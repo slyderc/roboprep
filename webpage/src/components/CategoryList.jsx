@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import Link from 'next/link';
 import { usePrompts } from '../context/PromptContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -100,9 +101,12 @@ export function CategoryList() {
         </div>
         <div className="flex justify-between items-center">
           {user?.isAdmin && (
-            <span className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-0.5 rounded-full text-xs font-medium">
+            <Link
+              href="/admin"
+              className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-0.5 rounded-full text-xs font-medium hover:bg-red-200 dark:hover:bg-red-800 transition-colors cursor-pointer"
+            >
               Admin
-            </span>
+            </Link>
           )}
           <button
             onClick={handleLogout}
