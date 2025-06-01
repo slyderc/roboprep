@@ -72,8 +72,17 @@ export default function RegisterPage() {
       formData.lastName.trim()
     );
     
-    // Allow submission if basic form is valid AND either Turnstile is validated OR there's a Turnstile error
-    return basicFormValid && (turnstileValidated || turnstileError);
+    // Check if we're in local development
+    const isLocalDevelopment = typeof window !== 'undefined' && 
+      process.env.NODE_ENV === 'development' &&
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1');
+    
+    // In development mode, skip Turnstile validation
+    // In production, require Turnstile validation OR allow fallback if there's an error
+    const turnstileValid = isLocalDevelopment || turnstileValidated || turnstileError;
+    
+    return basicFormValid && turnstileValid;
   };
 
   const handleSubmit = async (e) => {
