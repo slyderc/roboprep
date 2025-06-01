@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDatabaseVersion, checkUpgradeNeeded, upgradeDatabase, getDbStats } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 /**
  * GET - Get database status and version information
@@ -76,11 +80,30 @@ export async function POST(request) {
       );
 
       if (success) {
+        // After successful database upgrade, regenerate Prisma client
+        console.log('Database upgrade successful, regenerating Prisma client...');
+        let prismaRegenerateSuccess = false;
+        let prismaError = null;
+        
+        try {
+          await execAsync('npx prisma generate', { cwd: process.cwd() });
+          console.log('Prisma client regenerated successfully');
+          prismaRegenerateSuccess = true;
+        } catch (error) {
+          console.error('Failed to regenerate Prisma client:', error);
+          prismaError = error.message;
+        }
+        
         return NextResponse.json({
           success: true,
           message: `Database upgraded successfully from ${upgradeInfo.currentVersion} to ${upgradeInfo.targetVersion}`,
           fromVersion: upgradeInfo.currentVersion,
-          toVersion: upgradeInfo.targetVersion
+          toVersion: upgradeInfo.targetVersion,
+          prismaRegenerated: prismaRegenerateSuccess,
+          prismaError: prismaError,
+          nextSteps: prismaRegenerateSuccess 
+            ? ['Application restart recommended for full compatibility']
+            : ['Manual Prisma regeneration required: npx prisma generate', 'Application rebuild required: npm run build', 'Application restart required']
         });
       } else {
         return NextResponse.json(

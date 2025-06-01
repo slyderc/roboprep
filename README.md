@@ -129,17 +129,24 @@ npm run db:init
 ```
 
 ### Database Upgrades
-The application includes an automated database upgrade system:
+The application includes multiple database upgrade methods:
 
 ```bash
 # Check if upgrade is needed
 npm run db:check
 
-# Perform upgrade (with automatic backup)
+# Database-only upgrade (requires manual rebuild)
 npm run db:upgrade
+
+# Complete production upgrade (recommended)
+npm run db:upgrade-production
 ```
 
 **Web Interface**: Admin users can manage database upgrades through the admin dashboard at `/admin` → Database Management.
+
+**⚠️ Important**: Web-based upgrades may require manual application restart. For production, use the CLI tools.
+
+For detailed upgrade procedures and troubleshooting, see **[DATABASE_UPGRADES.md](DATABASE_UPGRADES.md)**.
 
 ### Backup & Recovery
 - Automatic backups created before database upgrades
@@ -226,6 +233,7 @@ npm run build:quiet   # Minimal output
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical architecture and component documentation
 - **[DATABASE.md](DATABASE.md)** - Database schema, migrations, and upgrade system
+- **[DATABASE_UPGRADES.md](DATABASE_UPGRADES.md)** - Comprehensive database upgrade procedures and troubleshooting
 - **[CLAUDE.md](CLAUDE.md)** - Development guidelines for Claude Code integration
 - **[LICENSE.md](LICENSE.md)** - MIT License with attribution requirements
 

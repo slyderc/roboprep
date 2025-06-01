@@ -69,7 +69,20 @@ export default function DbStatsPanel({ refreshTrigger = 0 }) {
 
       const result = await response.json();
       if (result.success) {
-        alert(`✅ ${result.message}`);
+        let message = `✅ ${result.message}`;
+        
+        if (!result.prismaRegenerated) {
+          message += '\n\n⚠️ Manual steps required:';
+          result.nextSteps?.forEach(step => {
+            message += `\n• ${step}`;
+          });
+          message += '\n\n🔄 For production, use: npm run db:upgrade-production';
+        } else {
+          message += '\n\n✅ Prisma client regenerated successfully';
+          message += '\n🔄 Application restart recommended';
+        }
+        
+        alert(message);
         await fetchDatabaseStatus();
       } else {
         alert(`❌ ${result.error}`);
@@ -110,17 +123,22 @@ export default function DbStatsPanel({ refreshTrigger = 0 }) {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-medium text-gray-900 dark:text-white">Database Management</h3>
             {needsUpgrade && (
-              <button
-                onClick={triggerUpgrade}
-                disabled={loading}
-                className="px-3 py-1 text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Upgrading...' : 'Upgrade Database'}
-              </button>
+              <div className="flex flex-col space-y-2">
+                <button
+                  onClick={triggerUpgrade}
+                  disabled={loading}
+                  className="px-3 py-1 text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Upgrading...' : 'Upgrade Database'}
+                </button>
+                <div className="text-xs text-gray-600 dark:text-gray-400 max-w-md">
+                  ⚠️ Web upgrade may require manual application restart. For production, use CLI: <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">npm run db:upgrade-production</code>
+                </div>
+              </div>
             )}
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">Current Version: </span>
               <span className="font-mono text-gray-900 dark:text-white">{dbStatus.currentVersion}</span>

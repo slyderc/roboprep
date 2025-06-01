@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Standalone Database upgrade CLI script
+ * Production Database Upgrade Script
  * 
- * This script runs independently of the Next.js application and doesn't require
- * the full application stack to be loaded.
+ * This script performs a complete production upgrade including:
+ * 1. Database schema upgrade
+ * 2. Prisma client regeneration
+ * 3. Application rebuild
+ * 4. Verification steps
  * 
  * Usage:
- *   node scripts/upgrade-db-standalone.js              # Check status and upgrade if needed
- *   node scripts/upgrade-db-standalone.js --check      # Check status only
- *   node scripts/upgrade-db-standalone.js --force      # Force upgrade even if up to date
+ *   node scripts/production-upgrade.js              # Full upgrade process
+ *   node scripts/production-upgrade.js --check      # Check status only
+ *   node scripts/production-upgrade.js --db-only    # Database upgrade only
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -35,7 +38,6 @@ const INIT_VERSION = process.env.DATABASE_INIT_VERSION || '2.0.0';
 
 /**
  * Get current database version
- * @returns {Promise<string|null>} Current version or null if not set
  */
 async function getDatabaseVersion() {
   try {
@@ -49,13 +51,11 @@ async function getDatabaseVersion() {
 
 /**
  * Check if database upgrade is needed
- * @returns {Promise<Object>} Upgrade information
  */
 async function checkUpgradeNeeded() {
   const currentVersion = await getDatabaseVersion();
   const targetVersion = TARGET_VERSION;
   
-  // If no current version, it needs initialization
   if (!currentVersion) {
     return {
       needsUpgrade: true,
@@ -65,7 +65,6 @@ async function checkUpgradeNeeded() {
     };
   }
   
-  // Simple version comparison (works for semantic versioning)
   const needsUpgrade = currentVersion !== targetVersion;
   
   return {
@@ -77,17 +76,13 @@ async function checkUpgradeNeeded() {
 }
 
 /**
- * Create database backup before upgrade
- * @param {string} fromVersion - Current version
- * @param {string} toVersion - Target version  
- * @returns {Promise<string>} Backup file path
+ * Create database backup
  */
 async function createBackup(fromVersion, toVersion) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupName = `roboprep-backup-v${fromVersion}-to-v${toVersion}-${timestamp}.db`;
   const backupPath = path.join(process.cwd(), '..', backupName);
   
-  // Get database file path from environment
   const dbUrl = process.env.DATABASE_URL || 'file:../roboprep.db';
   const dbPath = dbUrl.replace('file:', '');
   const sourcePath = path.resolve(process.cwd(), dbPath);
@@ -104,14 +99,12 @@ async function createBackup(fromVersion, toVersion) {
 
 /**
  * Upgrade from version 2.0.0 to 2.1.0
- * Adds the isApproved column to User table
- * @returns {Promise<boolean>} Success status
  */
 async function upgrade_2_0_0_to_2_1_0() {
   try {
     console.log('Executing upgrade 2.0.0 → 2.1.0: Adding user approval workflow');
     
-    // Check if isApproved column exists by trying to query it
+    // Check if isApproved column exists
     let columnExists = false;
     try {
       await prisma.$queryRaw`SELECT isApproved FROM User LIMIT 1`;
@@ -128,8 +121,7 @@ async function upgrade_2_0_0_to_2_1_0() {
       console.log('isApproved column added successfully');
     }
     
-    // Approve all existing users (they were created before approval system)
-    // Use raw SQL since Prisma client may not know about the new column yet
+    // Approve all existing users
     const unapprovedResult = await prisma.$queryRaw`
       SELECT COUNT(*) as count FROM User WHERE isApproved = 0 OR isApproved IS NULL
     `;
@@ -155,22 +147,17 @@ async function upgrade_2_0_0_to_2_1_0() {
 
 /**
  * Update database version record
- * @param {string} version - New version to set
- * @returns {Promise<boolean>} Success status
  */
 async function setDatabaseVersion(version) {
   try {
-    // Check if a record exists
     const existing = await prisma.databaseInfo.findFirst();
     
     if (existing) {
-      // Update existing record
       await prisma.databaseInfo.update({
         where: { id: existing.id },
         data: { version }
       });
     } else {
-      // Create new record
       await prisma.databaseInfo.create({
         data: { version }
       });
@@ -184,20 +171,17 @@ async function setDatabaseVersion(version) {
 
 /**
  * Perform database upgrade
- * @param {string} fromVersion - Current version
- * @param {string} toVersion - Target version
- * @returns {Promise<boolean>} Success status
  */
 async function upgradeDatabase(fromVersion, toVersion) {
   try {
-    console.log(`\n🔄 Starting upgrade: ${fromVersion || 'uninitialized'} → ${toVersion}`);
+    console.log(`\\n🔄 Starting database upgrade: ${fromVersion || 'uninitialized'} → ${toVersion}`);
     
     // Create backup before upgrade
     if (fromVersion) {
       await createBackup(fromVersion, toVersion);
     }
     
-    // If no current version, initialize to INIT_VERSION first
+    // Initialize if no current version
     if (!fromVersion) {
       console.log(`📦 Initializing database to version ${INIT_VERSION}`);
       if (!await setDatabaseVersion(INIT_VERSION)) {
@@ -206,7 +190,7 @@ async function upgradeDatabase(fromVersion, toVersion) {
       fromVersion = INIT_VERSION;
     }
     
-    // Perform incremental upgrades based on version path
+    // Perform upgrade
     if (fromVersion === '2.0.0' && toVersion === '2.1.0') {
       if (!await upgrade_2_0_0_to_2_1_0()) {
         throw new Error('Upgrade 2.0.0 → 2.1.0 failed');
@@ -223,20 +207,6 @@ async function upgradeDatabase(fromVersion, toVersion) {
     }
     
     console.log(`✅ Database upgrade completed: ${fromVersion} → ${toVersion}`);
-    
-    // Regenerate Prisma client after successful upgrade
-    console.log('🔄 Regenerating Prisma client...');
-    try {
-      await execAsync('npx prisma generate', { cwd: process.cwd() });
-      console.log('✅ Prisma client regenerated successfully');
-    } catch (error) {
-      console.error('⚠️  Failed to regenerate Prisma client:', error.message);
-      console.log('📝 Manual steps required:');
-      console.log('   1. Run: npx prisma generate');
-      console.log('   2. Run: npm run build');
-      console.log('   3. Restart the application');
-    }
-    
     return true;
     
   } catch (error) {
@@ -245,79 +215,161 @@ async function upgradeDatabase(fromVersion, toVersion) {
   }
 }
 
+/**
+ * Regenerate Prisma client
+ */
+async function regeneratePrismaClient() {
+  console.log('🔄 Regenerating Prisma client...');
+  try {
+    const { stdout, stderr } = await execAsync('npx prisma generate', { cwd: process.cwd() });
+    if (stderr && !stderr.includes('Generated Prisma Client')) {
+      console.warn('Prisma generate warnings:', stderr);
+    }
+    console.log('✅ Prisma client regenerated successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to regenerate Prisma client:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Rebuild application
+ */
+async function rebuildApplication() {
+  console.log('🏗️  Rebuilding application...');
+  try {
+    const { stdout, stderr } = await execAsync('npm run build', { cwd: process.cwd() });
+    console.log('✅ Application rebuilt successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to rebuild application:', error.message);
+    console.log('Build output:', error.stdout);
+    return false;
+  }
+}
+
+/**
+ * Verify upgrade success
+ */
+async function verifyUpgrade(expectedVersion) {
+  console.log('🔍 Verifying upgrade...');
+  try {
+    const currentVersion = await getDatabaseVersion();
+    if (currentVersion === expectedVersion) {
+      console.log('✅ Database version verification passed');
+      return true;
+    } else {
+      console.log(`❌ Version mismatch: expected ${expectedVersion}, got ${currentVersion}`);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Verification failed:', error.message);
+    return false;
+  }
+}
+
 // CLI Interface
 const args = process.argv.slice(2);
 const checkOnly = args.includes('--check');
-const force = args.includes('--force');
+const dbOnly = args.includes('--db-only');
 
 async function main() {
-  console.log('🔍 RoboPrep Database Upgrade Tool (Standalone)');
-  console.log('===============================================\n');
+  console.log('🚀 RoboPrep Production Upgrade Tool');
+  console.log('=====================================\\n');
 
   try {
     // Check current status
-    console.log('Checking database status...');
-    const currentVersion = await getDatabaseVersion();
+    console.log('Checking system status...');
     const upgradeInfo = await checkUpgradeNeeded();
 
-    console.log(`📊 Current Version: ${currentVersion || 'Uninitialized'}`);
+    console.log(`📊 Current Version: ${upgradeInfo.currentVersion || 'Uninitialized'}`);
     console.log(`🎯 Target Version:  ${upgradeInfo.targetVersion}`);
-    console.log(`📈 Status:         ${upgradeInfo.needsUpgrade ? '⚠️  Upgrade Available' : '✅ Up to Date'}\n`);
+    console.log(`📈 Status:         ${upgradeInfo.needsUpgrade ? '⚠️  Upgrade Available' : '✅ Up to Date'}\\n`);
 
     if (checkOnly) {
       console.log('ℹ️  Check complete (--check flag specified)');
       if (upgradeInfo.needsUpgrade) {
-        console.log('\n💡 To upgrade, run: node scripts/upgrade-db-standalone.js');
+        console.log('\\n💡 To upgrade, run: node scripts/production-upgrade.js');
         process.exit(1);
       }
       process.exit(0);
     }
 
-    if (!upgradeInfo.needsUpgrade && !force) {
+    if (!upgradeInfo.needsUpgrade) {
       console.log('✅ Database is already up to date!');
-      console.log('\n💡 Use --force flag to run upgrade anyway');
       process.exit(0);
     }
 
-    if (force) {
-      console.log('🔥 Force upgrade requested (--force flag)');
-    }
+    // Perform upgrade steps
+    console.log('🚀 Starting production upgrade process...\\n');
 
-    // Perform upgrade
-    console.log('🚀 Starting database upgrade...');
-    console.log(`📦 Upgrading from ${upgradeInfo.currentVersion || 'uninitialized'} to ${upgradeInfo.targetVersion}`);
-    console.log('💾 Backup will be created automatically\n');
-
-    const success = await upgradeDatabase(
+    // Step 1: Database upgrade
+    console.log('📍 Step 1: Database Schema Upgrade');
+    const dbSuccess = await upgradeDatabase(
       upgradeInfo.currentVersion,
       upgradeInfo.targetVersion
     );
 
-    if (success) {
-      console.log('\n✅ Database upgrade completed successfully!');
-      console.log(`📈 Database version: ${upgradeInfo.currentVersion || 'uninitialized'} → ${upgradeInfo.targetVersion}`);
-      
-      // Verify the upgrade
-      const newVersion = await getDatabaseVersion();
-      if (newVersion === upgradeInfo.targetVersion) {
-        console.log('✔️  Upgrade verification passed');
-        console.log('\n📝 Next steps for production deployment:');
-        console.log('   1. Rebuild application: npm run build');
-        console.log('   2. Restart application server');
-        console.log('   3. Verify admin dashboard loads correctly');
-      } else {
-        console.log('⚠️  Upgrade verification failed - version mismatch');
-        process.exit(1);
-      }
-    } else {
-      console.log('\n❌ Database upgrade failed!');
-      console.log('🔍 Check the logs above for error details');
-      console.log('💾 Your original database should be unchanged');
+    if (!dbSuccess) {
+      console.log('❌ Database upgrade failed! Stopping here.');
       process.exit(1);
     }
 
+    if (dbOnly) {
+      console.log('\\n✅ Database-only upgrade completed (--db-only flag specified)');
+      console.log('📝 Manual steps still required:');
+      console.log('   1. Regenerate Prisma client: npx prisma generate');
+      console.log('   2. Rebuild application: npm run build');
+      console.log('   3. Restart application server');
+      process.exit(0);
+    }
+
+    // Step 2: Regenerate Prisma client
+    console.log('\\n📍 Step 2: Prisma Client Regeneration');
+    const prismaSuccess = await regeneratePrismaClient();
+
+    if (!prismaSuccess) {
+      console.log('⚠️  Prisma regeneration failed, but database upgrade succeeded');
+      console.log('📝 Manual steps required:');
+      console.log('   1. Run: npx prisma generate');
+      console.log('   2. Run: npm run build');
+      console.log('   3. Restart application server');
+      process.exit(1);
+    }
+
+    // Step 3: Rebuild application
+    console.log('\\n📍 Step 3: Application Rebuild');
+    const buildSuccess = await rebuildApplication();
+
+    if (!buildSuccess) {
+      console.log('⚠️  Application rebuild failed, but database and Prisma are updated');
+      console.log('📝 Manual steps required:');
+      console.log('   1. Fix build issues');
+      console.log('   2. Run: npm run build');
+      console.log('   3. Restart application server');
+      process.exit(1);
+    }
+
+    // Step 4: Verify
+    console.log('\\n📍 Step 4: Verification');
+    const verifySuccess = await verifyUpgrade(upgradeInfo.targetVersion);
+
+    if (!verifySuccess) {
+      console.log('⚠️  Verification failed, manual check required');
+      process.exit(1);
+    }
+
+    // Success!
+    console.log('\\n🎉 Production upgrade completed successfully!');
+    console.log(`📈 Database version: ${upgradeInfo.currentVersion || 'uninitialized'} → ${upgradeInfo.targetVersion}`);
+    console.log('\\n📝 Final steps:');
+    console.log('   1. Restart your application server');
+    console.log('   2. Verify admin dashboard loads correctly');
+    console.log('   3. Test user authentication and approval workflow');
+
   } catch (error) {
-    console.error('\n💥 Upgrade script error:', error.message);
+    console.error('\\n💥 Production upgrade failed:', error.message);
     console.error('🔍 Full error:', error);
     process.exit(1);
   } finally {
@@ -328,26 +380,22 @@ async function main() {
 // Show help
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-🔍 RoboPrep Database Upgrade Tool (Standalone)
+🚀 RoboPrep Production Upgrade Tool
 
 Usage:
-  node scripts/upgrade-db-standalone.js              Check status and upgrade if needed
-  node scripts/upgrade-db-standalone.js --check      Check upgrade status only
-  node scripts/upgrade-db-standalone.js --force      Force upgrade even if up to date
-  node scripts/upgrade-db-standalone.js --help       Show this help message
+  node scripts/production-upgrade.js              Complete production upgrade
+  node scripts/production-upgrade.js --check      Check upgrade status only
+  node scripts/production-upgrade.js --db-only    Database upgrade only
+  node scripts/production-upgrade.js --help       Show this help message
 
-Examples:
-  node scripts/upgrade-db-standalone.js --check      # Check if upgrade is needed
-  node scripts/upgrade-db-standalone.js              # Perform upgrade if needed
-  node scripts/upgrade-db-standalone.js --force      # Force upgrade regardless of status
+Complete Upgrade Process:
+  1. Database schema upgrade with backup
+  2. Prisma client regeneration  
+  3. Application rebuild
+  4. Verification and validation
 
-Features:
-  • Automatic backup creation before upgrade
-  • Incremental version upgrades (1.0.0 → 2.0.0 → 2.1.0)
-  • Data preservation during upgrades
-  • Rollback safety (original database unchanged on failure)
-  • Version verification after upgrade
-  • No dependency on Next.js application context
+This tool handles the complete upgrade cycle to avoid the Prisma client
+validation issues that occur when schema changes but client is outdated.
 `);
   process.exit(0);
 }
