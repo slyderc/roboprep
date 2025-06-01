@@ -76,22 +76,15 @@ export async function initializeDatabase() {
     } else {
       // Check if we need to upgrade the database version
       const currentVersion = dbInfo.version;
-      if (currentVersion === '1.0.0') {
-        // Upgrade from 1.0.0 to 2.0.0 - add multi-user support
-        
-        // Create default admin user if no users exist
-        const userCount = await prisma.user.count();
-        if (userCount === 0) {
-          const adminUserId = await createDefaultAdminUser();
-          
-          // Migrate legacy data to the admin user if we created one
-          if (adminUserId) {
-            await migrateLegacyData(adminUserId);
-          }
+      const targetVersion = process.env.DATABASE_TARGET_VERSION || '2.1.0';
+      
+      if (currentVersion !== targetVersion) {
+        console.log(`Database upgrade needed: ${currentVersion} → ${targetVersion}`);
+        const success = await upgradeDatabase(currentVersion, targetVersion);
+        if (!success) {
+          console.error('Database upgrade failed');
+          return false;
         }
-        
-        // Update database version
-        await updateDatabaseVersion('2.0.0');
       }
     }
 
@@ -118,6 +111,7 @@ async function createDefaultAdminUser() {
         firstName: 'Admin',
         lastName: 'User',
         isAdmin: true,
+        isApproved: true, // Admin is always approved
       },
     });
     
@@ -129,6 +123,7 @@ async function createDefaultAdminUser() {
         firstName: 'Test',
         lastName: 'User',
         isAdmin: false,
+        isApproved: true, // Test user is pre-approved for testing
       },
     });
     
@@ -166,10 +161,241 @@ export async function updateDatabaseVersion(version) {
       where: { id: 1 },
       data: { version },
     });
+    console.log(`Database version updated to ${version}`);
     return true;
   } catch (error) {
     console.error('Error updating database version:', error);
     return false;
+  }
+}
+
+/**
+ * Comprehensive database upgrade system
+ * Handles incremental upgrades between versions while preserving data
+ * @param {string} fromVersion - Current database version
+ * @param {string} toVersion - Target database version
+ * @returns {Promise<boolean>} Success flag
+ */
+export async function upgradeDatabase(fromVersion, toVersion) {
+  try {
+    console.log(`Starting database upgrade from ${fromVersion} to ${toVersion}`);
+    
+    // Create a backup before upgrading
+    await createDatabaseBackup();
+    
+    // Define upgrade path - each version should know how to upgrade to the next
+    const upgradePath = getUpgradePath(fromVersion, toVersion);
+    
+    if (upgradePath.length === 0) {
+      console.log('No upgrade path needed or available');
+      return true;
+    }
+    
+    // Execute upgrades sequentially
+    for (const step of upgradePath) {
+      console.log(`Upgrading from ${step.from} to ${step.to}...`);
+      const success = await executeUpgradeStep(step.from, step.to);
+      if (!success) {
+        console.error(`Upgrade step failed: ${step.from} → ${step.to}`);
+        return false;
+      }
+      
+      // Update version after each successful step
+      await updateDatabaseVersion(step.to);
+    }
+    
+    console.log(`Database upgrade completed successfully: ${fromVersion} → ${toVersion}`);
+    return true;
+  } catch (error) {
+    console.error('Database upgrade error:', error);
+    return false;
+  }
+}
+
+/**
+ * Get the upgrade path between two versions
+ * @param {string} fromVersion 
+ * @param {string} toVersion 
+ * @returns {Array} Array of upgrade steps
+ */
+function getUpgradePath(fromVersion, toVersion) {
+  const upgrades = [
+    { from: '1.0.0', to: '2.0.0' },
+    { from: '2.0.0', to: '2.1.0' }
+  ];
+  
+  const path = [];
+  let currentVersion = fromVersion;
+  
+  while (currentVersion !== toVersion) {
+    const nextUpgrade = upgrades.find(u => u.from === currentVersion);
+    if (!nextUpgrade) {
+      console.error(`No upgrade path found from ${currentVersion} to ${toVersion}`);
+      return [];
+    }
+    
+    path.push(nextUpgrade);
+    currentVersion = nextUpgrade.to;
+    
+    // Prevent infinite loops
+    if (path.length > 10) {
+      console.error('Upgrade path too long, possible infinite loop');
+      return [];
+    }
+  }
+  
+  return path;
+}
+
+/**
+ * Execute a single upgrade step
+ * @param {string} fromVersion 
+ * @param {string} toVersion 
+ * @returns {Promise<boolean>} Success flag
+ */
+async function executeUpgradeStep(fromVersion, toVersion) {
+  try {
+    if (fromVersion === '1.0.0' && toVersion === '2.0.0') {
+      return await upgrade_1_0_0_to_2_0_0();
+    } else if (fromVersion === '2.0.0' && toVersion === '2.1.0') {
+      return await upgrade_2_0_0_to_2_1_0();
+    } else {
+      console.error(`Unknown upgrade step: ${fromVersion} → ${toVersion}`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`Upgrade step error (${fromVersion} → ${toVersion}):`, error);
+    return false;
+  }
+}
+
+/**
+ * Upgrade from 1.0.0 to 2.0.0 - Add multi-user support
+ * @returns {Promise<boolean>} Success flag
+ */
+async function upgrade_1_0_0_to_2_0_0() {
+  try {
+    console.log('Executing upgrade 1.0.0 → 2.0.0: Adding multi-user support');
+    
+    // Create default admin user if no users exist
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+      const adminUserId = await createDefaultAdminUser();
+      
+      // Migrate legacy data to the admin user if we created one
+      if (adminUserId) {
+        await migrateLegacyData(adminUserId);
+      }
+    }
+    
+    console.log('Upgrade 1.0.0 → 2.0.0 completed successfully');
+    return true;
+  } catch (error) {
+    console.error('Upgrade 1.0.0 → 2.0.0 failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Upgrade from 2.0.0 to 2.1.0 - Add user approval workflow
+ * @returns {Promise<boolean>} Success flag
+ */
+async function upgrade_2_0_0_to_2_1_0() {
+  try {
+    console.log('Executing upgrade 2.0.0 → 2.1.0: Adding user approval workflow');
+    
+    // Check if isApproved column exists by trying to query it
+    let columnExists = false;
+    try {
+      await prisma.$queryRaw`SELECT isApproved FROM User LIMIT 1`;
+      columnExists = true;
+    } catch (error) {
+      // Column doesn't exist, we need to add it
+      columnExists = false;
+    }
+    
+    if (!columnExists) {
+      console.log('Adding isApproved column to User table');
+      
+      // Add the isApproved column with default value false
+      await prisma.$executeRaw`ALTER TABLE User ADD COLUMN isApproved BOOLEAN DEFAULT 0`;
+      
+      console.log('isApproved column added successfully');
+    } else {
+      console.log('isApproved column already exists');
+    }
+    
+    // Approve all existing users (they were created before approval system)
+    const unapprovedCount = await prisma.user.count({
+      where: { isApproved: false }
+    });
+    
+    if (unapprovedCount > 0) {
+      console.log(`Approving ${unapprovedCount} existing users`);
+      
+      await prisma.user.updateMany({
+        where: { isApproved: false },
+        data: { isApproved: true }
+      });
+      
+      console.log('All existing users have been approved');
+    }
+    
+    console.log('Upgrade 2.0.0 → 2.1.0 completed successfully');
+    return true;
+  } catch (error) {
+    console.error('Upgrade 2.0.0 → 2.1.0 failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Create a database backup before upgrades
+ * @returns {Promise<boolean>} Success flag
+ */
+async function createDatabaseBackup() {
+  try {
+    const dbPath = process.env.DATABASE_URL?.replace('file:', '') || '../roboprep.db';
+    const backupPath = `${dbPath}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    
+    // Copy the database file
+    if (fs.existsSync(dbPath)) {
+      fs.copyFileSync(dbPath, backupPath);
+      console.log(`Database backup created: ${backupPath}`);
+    } else {
+      console.log('Database file not found for backup, continuing...');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error creating database backup:', error);
+    // Don't fail the upgrade if backup fails, just warn
+    console.warn('Continuing upgrade without backup');
+    return true;
+  }
+}
+
+/**
+ * Check if database needs upgrade
+ * @returns {Promise<{needsUpgrade: boolean, currentVersion: string, targetVersion: string}>}
+ */
+export async function checkUpgradeNeeded() {
+  try {
+    const currentVersion = await getDatabaseVersion();
+    const targetVersion = process.env.DATABASE_TARGET_VERSION || '2.1.0';
+    
+    return {
+      needsUpgrade: currentVersion !== targetVersion,
+      currentVersion: currentVersion || 'unknown',
+      targetVersion
+    };
+  } catch (error) {
+    console.error('Error checking upgrade status:', error);
+    return {
+      needsUpgrade: false,
+      currentVersion: 'error',
+      targetVersion: 'unknown'
+    };
   }
 }
 

@@ -263,7 +263,7 @@ export default function AdminPage() {
           </div>
         </div>
         
-        {/* Database Statistics Panel */}
+        {/* Database Overview & Management */}
         <DbStatsPanel refreshTrigger={statsRefreshTrigger} />
         
         {/* Needs Approval Section */}

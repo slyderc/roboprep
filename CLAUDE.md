@@ -51,6 +51,7 @@ This repository contains a web application version of "Robo Show Prep from Radio
    - Storage.js wrapper that maintains compatibility with previous API
    - Support for import/export functionality including OpenAI responses
    - Response history browsing with editing capabilities
+   - **Database upgrade system**: Comprehensive schema migration framework with version tracking
 
 4. **OpenAI Integration**
    - Direct submission of prompts to OpenAI's API
@@ -80,7 +81,8 @@ This repository contains a web application version of "Robo Show Prep from Radio
   - `schema.prisma`: Database model definitions
 - `/webpage/src/app/`: Next.js app router pages and layout
   - `/api/auth/`: Authentication endpoints (login, register, logout)
-  - `/api/admin/`: Admin interface endpoints for user management
+  - `/api/admin/`: Admin interface endpoints for user management and database upgrades
+  - `/api/admin/database/`: Database management and upgrade API endpoint
   - `/api/openai/`: API route for OpenAI integration
   - `/api/db/`: API routes for database operations
 - `/webpage/src/components/`: UI components
@@ -94,6 +96,7 @@ This repository contains a web application version of "Robo Show Prep from Radio
   - `TurnstileWidget.jsx`: Reusable Turnstile security component
   - `PasswordStrengthIndicator.jsx`: Real-time password validation feedback
   - `EmailValidator.jsx`: Comprehensive email validation component
+  - `DatabaseManagement.jsx`: Database upgrade management interface for admin
   - `AccountInfo.jsx`: User account information and management
 - `/webpage/src/hooks/`: Custom React hooks
   - `useTurnstile.js`: Reusable hook for Turnstile integration and bot protection
@@ -102,7 +105,7 @@ This repository contains a web application version of "Robo Show Prep from Radio
   - `AuthContext.jsx`: Handles user authentication and session management
   - `SettingsContext.jsx`: User preferences and theme management
 - `/webpage/src/lib/`: Utility functions and helpers
-  - `db.js`: Database connection and helper functions
+  - `db.js`: Database connection and helper functions with upgrade system
   - `storage.js`: Database wrapper with localStorage-compatible API
   - `openaiService.js`: OpenAI API integration
   - `apiClient.js`: Client-side API wrapper
@@ -110,6 +113,8 @@ This repository contains a web application version of "Robo Show Prep from Radio
   - `turnstile.js`: Turnstile verification and security utilities
   - `validation.js`: Comprehensive form validation with security-focused rules
   - `toastUtil.js`: Toast notification management
+- `/webpage/scripts/`: Database management and upgrade scripts
+  - `upgrade-db-standalone.js`: Standalone database upgrade tool with CLI interface
 - `/webpage/src/styles/`: Global CSS and theme definitions
   - `globals.css`: Contains theme variables and global styles
 
@@ -127,6 +132,8 @@ NEXT_PUBLIC_OPENAI_TEMPERATURE=0.7
 
 # Database settings
 DATABASE_URL="file:../roboprep.db"
+DATABASE_INIT_VERSION="2.0.0"
+DATABASE_TARGET_VERSION="2.1.0"
 
 # Authentication settings
 JWT_SECRET="your-secure-random-secret-key"
@@ -169,6 +176,66 @@ AI responses are stored with the following structure:
 4. Response is displayed in a modal with options to save
 5. Saved responses can be viewed, edited, and managed via response history
 6. Responses can be exported along with prompts
+
+## Database Upgrade System
+
+### Overview
+The application includes a comprehensive database upgrade framework designed to handle schema changes while preserving all existing data. This system is production-ready and reusable for future database modifications.
+
+### Key Features
+- **Version Tracking**: Database version stored in `DatabaseInfo` table
+- **Incremental Upgrades**: Support for sequential version upgrades (2.0.0 → 2.1.0 → 2.2.0)
+- **Automatic Backups**: Database backed up before any upgrade operation
+- **Data Preservation**: All existing data maintained during schema changes
+- **Multiple Interfaces**: CLI tools and web admin interface for upgrades
+- **Safety Features**: Rollback protection and verification checks
+
+### Available Tools
+
+#### CLI Commands
+```bash
+# Check if database upgrade is needed
+npm run db:check
+
+# Perform database upgrade (with automatic backup)
+npm run db:upgrade
+
+# Force upgrade regardless of current status
+node scripts/upgrade-db-standalone.js --force
+```
+
+#### Web Admin Interface
+- Access: `/admin` page → Database Management section
+- Features: Real-time status, visual upgrade interface, environment info
+- API endpoint: `/api/admin/database` for status and upgrade operations
+
+### Current Upgrade Path: 2.0.0 → 2.1.0
+**Purpose**: Add user approval workflow
+**Changes**:
+- Adds `isApproved` column to User table
+- Auto-approves all existing users to maintain functionality
+- Updates database version to 2.1.0
+
+### Extensibility Framework
+The upgrade system is designed for easy extension with future schema changes:
+
+1. **Update environment variables**: Set new `DATABASE_TARGET_VERSION`
+2. **Create upgrade function**: Add `upgrade_X_X_X_to_Y_Y_Y()` function
+3. **Update upgrade logic**: Add new version path to `upgradeDatabase()`
+4. **Update Prisma schema**: Add new models/fields as needed
+
+### Key Database Functions
+- `getDatabaseVersion()`: Get current database version
+- `checkUpgradeNeeded()`: Check if upgrade is available
+- `upgradeDatabase(from, to)`: Perform database upgrade
+- `getDbStats()`: Get database statistics for admin interface
+
+### Safety and Production Features
+- **Automatic backups**: Created before each upgrade
+- **Column existence checking**: Prevents duplicate schema modifications
+- **Transaction safety**: Changes applied atomically
+- **Verification**: Post-upgrade validation confirms success
+- **Environment awareness**: Works in both development and production
 
 ## Recent UI Improvements
 
@@ -398,6 +465,8 @@ When adding new features:
    - API routes for database access
    - Compatibility layer in storage.js that maintains the same API as localStorage
    - Many-to-many relationships for tags and prompts
+   - **Database upgrades**: Use `npm run db:check` and `npm run db:upgrade` for schema migrations
+   - **Admin database management**: Web interface at `/admin` for database status and upgrades
 
 5. **OpenAI Integration**:
    - API key management through environment variables
@@ -419,10 +488,33 @@ When adding new features:
 2. Database setup:
    - Verify the SQLite database is initialized with `npx prisma studio`
    - Check that the default categories and core prompts are loaded
+   - Test database upgrade commands: `npm run db:check` and `npm run db:upgrade`
+   - Verify admin database management interface displays correct status
 3. UI and theme testing:
    - Test in both light and dark themes
    - Verify consistent styling across all components
    - Verify responsive behavior at different screen sizes
+
+### Browser Testing with Puppeteer MCP
+Claude Code has access to a Puppeteer MCP interface that can be used for browser automation and testing:
+
+**Available Puppeteer Tools**:
+- `mcp__puppeteer-mcp-server__puppeteer_connect_active_tab`: Connect to existing Chrome instance
+- `mcp__puppeteer-mcp-server__puppeteer_navigate`: Navigate to URLs
+- `mcp__puppeteer-mcp-server__puppeteer_screenshot`: Take screenshots for visual verification
+- `mcp__puppeteer-mcp-server__puppeteer_click`: Click elements
+- `mcp__puppeteer-mcp-server__puppeteer_fill`: Fill forms
+- `mcp__puppeteer-mcp-server__puppeteer_select`: Select dropdown options
+- `mcp__puppeteer-mcp-server__puppeteer_hover`: Hover over elements
+- `mcp__puppeteer-mcp-server__puppeteer_evaluate`: Execute JavaScript in browser console
+
+**Usage for RoboPrep Testing**:
+- Navigate to `http://localhost:3000` to test the application
+- Take screenshots of different pages and themes for visual verification
+- Test form interactions (login, registration, prompt creation)
+- Verify admin dashboard functionality
+- Test responsive behavior by evaluating viewport changes
+- Automate user workflows (login → navigate → interact → verify)
 4. Feature testing:
    - Test tag filtering with multiple tag selections (AND logic)
    - Verify category organization ("All Prompts", "Recently Used", and "Favorites" at top)

@@ -1,26 +1,27 @@
 # RoboPrep Database Architecture
 
-This document provides an overview of the database architecture used in the RoboPrep web application. The application has migrated from using localStorage to a relational database for improved data management and scalability.
+This document provides comprehensive documentation for the database architecture, schema management, and upgrade system used in the RoboPrep web application.
 
 ## Technology Stack
 
 - **Database**: SQLite (file-based)
 - **ORM**: Prisma
 - **API Layer**: Next.js API Routes
-- **Client Integration**: Fetch API
+- **Client Integration**: Fetch API with error handling
 - **Authentication**: JWT tokens with secure cookie storage
+- **Migration System**: Custom upgrade framework with version tracking
 
 ## Database Schema
 
 ### Core Models
 
 #### DatabaseInfo
-Tracks the database version for migration purposes.
+Tracks the database version for migration and upgrade purposes.
 ```prisma
 model DatabaseInfo {
-  id          Int      @id @default(1)
-  version     String
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  version   String
+  updatedAt DateTime @updatedAt
 }
 ```
 
@@ -28,46 +29,46 @@ model DatabaseInfo {
 Stores user accounts for authentication and user-specific data.
 ```prisma
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String    // Hashed password
-  firstName     String?
-  lastName      String?
-  isAdmin       Boolean   @default(false)
-  isApproved    Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  settings      UserSetting[]
-  favorites     UserFavorite[]
-  recentlyUsed  UserRecentlyUsed[]
-  sessions      Session[]
-  responses     Response[]
+  id           String             @id @default(cuid())
+  email        String             @unique
+  password     String             // Hashed with bcrypt (12 rounds)
+  firstName    String?
+  lastName     String?
+  isAdmin      Boolean            @default(false)
+  isApproved   Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  sessions     Session[]
+  favorites    UserFavorite[]
+  recentlyUsed UserRecentlyUsed[]
+  settings     UserSetting[]
+  responses    Response[]
 }
 ```
 
 #### Session
-Manages user authentication sessions.
+Manages user authentication sessions with JWT tokens.
 ```prisma
 model Session {
-  id          String   @id @default(cuid())
-  userId      String
-  token       String   @unique
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 ```
 
 #### UserSetting
-Stores user-specific settings.
+Stores user-specific application settings and preferences.
 ```prisma
 model UserSetting {
-  id        String  @id @default(cuid())
-  userId    String
-  key       String
-  value     String  // JSON string for setting values
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  key    String
+  value  String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, key])
 }
 ```
@@ -76,19 +77,19 @@ model UserSetting {
 Stores both core (built-in) and user-created prompts.
 ```prisma
 model Prompt {
-  id           String    @id
-  title        String
-  description  String?
-  categoryId   String?
-  promptText   String
-  tags         PromptTag[]
-  isUserCreated Boolean
-  usageCount   Int       @default(0)
-  createdAt    DateTime
-  lastUsed     DateTime?
-  lastEdited   DateTime?
-  responses    Response[]
-  userFavorites UserFavorite[]
+  id               String             @id
+  title            String
+  description      String?
+  categoryId       String?
+  promptText       String
+  isUserCreated    Boolean
+  usageCount       Int                @default(0)
+  createdAt        DateTime
+  lastUsed         DateTime?
+  lastEdited       DateTime?
+  tags             PromptTag[]
+  responses        Response[]
+  userFavorites    UserFavorite[]
   userRecentlyUsed UserRecentlyUsed[]
 }
 ```
@@ -104,11 +105,11 @@ model Category {
 ```
 
 #### Tag
-Stores tags associated with prompts.
+Stores tags associated with prompts for filtering and organization.
 ```prisma
 model Tag {
-  id      String     @id @default(cuid())
-  name    String     @unique
+  id      String      @id @default(cuid())
+  name    String      @unique
   prompts PromptTag[]
 }
 ```
@@ -119,8 +120,8 @@ Junction table for the many-to-many relationship between prompts and tags.
 model PromptTag {
   promptId String
   tagId    String
-  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
   tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
 
   @@id([promptId, tagId])
 }
@@ -133,8 +134,8 @@ model UserFavorite {
   id       String @id @default(cuid())
   userId   String
   promptId String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, promptId])
 }
@@ -144,12 +145,12 @@ model UserFavorite {
 Tracks user-specific recently used prompts with timestamps.
 ```prisma
 model UserRecentlyUsed {
-  id        String   @id @default(cuid())
-  userId    String
-  promptId  String
-  usedAt    DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  userId   String
+  promptId String
+  usedAt   DateTime @default(now())
+  prompt   Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, promptId])
   @@index([usedAt])
@@ -160,19 +161,19 @@ model UserRecentlyUsed {
 Stores AI-generated responses to prompts with user attribution.
 ```prisma
 model Response {
-  id              String    @id
-  promptId        String
-  userId          String?
-  responseText    String
-  modelUsed       String?
-  promptTokens    Int?
+  id               String    @id
+  promptId         String
+  userId           String?
+  responseText     String
+  modelUsed        String?
+  promptTokens     Int?
   completionTokens Int?
-  totalTokens     Int?
-  createdAt       DateTime
-  lastEdited      DateTime?
-  variablesUsed   String?   // JSON string for variable values
-  prompt          Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
-  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  totalTokens      Int?
+  createdAt        DateTime
+  lastEdited       DateTime?
+  variablesUsed    String?   // JSON string for variable values
+  prompt           Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 ```
 
@@ -189,358 +190,425 @@ model Setting {
 
 > **Note**: The `Favorite` and `RecentlyUsed` tables have been removed as they've been completely replaced by the user-specific `UserFavorite` and `UserRecentlyUsed` tables.
 
-## Authentication Implementation
+## Database Version Management & Upgrade System
 
-The application implements a robust authentication system with the following features:
+### Overview
 
-1. **User Account Management**:
-   - Secure registration with email validation
-   - Password encryption using bcrypt (12 rounds)
-   - Login/logout functionality with session management
-   - Password change capabilities for authenticated users
-   - Admin-controlled password reset functionality
-   - User profile management with first/last name fields
+The RoboPrep database includes a comprehensive upgrade system designed to handle schema changes while preserving all existing data. This system supports incremental versioning and provides both CLI and web-based upgrade interfaces.
 
-2. **Session Management**:
-   - JWT-based authentication
-   - Secure HTTP-only cookies for token storage
-   - 12-hour session expiration
-   - Session invalidation on logout
+### Version Tracking
 
-3. **Authorization**:
-   - Role-based access control (admin vs. regular user)
-   - User approval workflow: new users require administrator approval
-   - Protected API routes requiring authentication via middleware
-   - Administrative functions restricted to approved admin users
-   - Admin panel for user management and approval at `/admin`
-   - Admin ability to approve pending users and toggle user admin status
+The database version is tracked in the `DatabaseInfo` table:
+- **Current supported versions**: 2.0.0 → 2.1.0 → (future versions)
+- **Version storage**: Centralized in `DatabaseInfo.version` field
+- **Automatic detection**: System automatically detects current vs. target version
 
-4. **Security Measures**:
-   - Password hashing with bcrypt (12 rounds)
-   - Comprehensive password validation with security-safe character restrictions
-   - Email validation with security filtering
-   - User approval workflow for new account security
-   - CSRF protection via secure HTTP-only cookies
-   - Session expiration and cleanup
-   - Session fixation prevention
-   - XSS protection
-   - Secure JWT token generation and validation
-   - Protected authentication middleware for API routes
+### Environment Configuration
 
-## Multi-User Data Isolation
+Database versioning is controlled through environment variables:
 
-The database schema is designed to support multi-user environments with proper data isolation:
+```bash
+# Database version settings
+DATABASE_INIT_VERSION="2.0.0"        # Version for new installations
+DATABASE_TARGET_VERSION="2.1.0"      # Target version for upgrades
+DATABASE_URL="file:../roboprep.db"   # Database file location
+```
 
-1. **User-Specific Data**:
-   - Each user has their own favorites (UserFavorite)
-   - Each user has their own recently used prompts (UserRecentlyUsed)
-   - Each user has their own settings (UserSetting)
-   - Authentication data is stored securely (User, Session)
+### Upgrade System Architecture
 
-2. **Shared Data**:
-   - All prompts are accessible to all users
-   - AI responses include attribution to their creator but are visible to all users
-   - Categories and tags are global
+#### Reusable Framework
 
-3. **Data Migration Strategy**:
-   - Legacy global `Setting` table is maintained for backward compatibility
-   - Legacy `Favorite` and `RecentlyUsed` tables have been removed, fully replaced by user-specific tables
-   - All user-specific tables contain user-linked data
-
-## Implementation Details
-
-### Tag Filtering Implementation
-
-The database schema supports tag-based filtering through a many-to-many relationship:
-
-1. **Database Structure**:
-   - Tags are stored in a separate `Tag` table with unique tag names
-   - The `PromptTag` junction table manages many-to-many relationships between prompts and tags
-   - This allows prompts to have multiple tags and tags to be associated with multiple prompts
-
-2. **Tag Data Flow**:
-   - When creating or updating prompts, tags are extracted and stored:
-     - Existing tags are reused to prevent duplication
-     - New tags are created when needed
-     - Prompt-tag relationships are stored in the junction table
-   - When retrieving prompts, tags are included with each prompt using Prisma's relation queries
-   - Tag data is transformed from database format to a simple string array for frontend use
-
-3. **Tag Filtering Logic**:
-   - Tag filtering is implemented client-side after data is retrieved from the database
-   - The UI filters prompts to only show those with ALL selected tags (AND logic)
-   - This provides a powerful refinement mechanism when combined with category filtering
-
-### Category Organization
-
-Categories in the database support both system-defined and user-created categories:
-
-1. **Database Structure**:
-   - Categories are stored in the `Category` table with a unique ID and name
-   - The `isUserCreated` flag distinguishes between system and user categories
-   - Each prompt references a single category through the `categoryId` field
-
-2. **Special Categories**:
-   - "All Prompts", "Recently Used", and "Favorites" are virtual categories handled by the application logic
-   - These don't exist as database records but are generated from database queries:
-     - "All Prompts" - Shows all prompts regardless of category
-     - "Recently Used" - Generated from the `UserRecentlyUsed` table (user-specific)
-     - "Favorites" - Generated from the `UserFavorite` table (user-specific)
-
-3. **Category Organization**:
-   - Category order is managed through client-side logic
-   - The application loads categories from the database and then applies sorting rules
-   - Categories starting with numbers are sorted numerically, then remaining categories alphabetically
-
-### Authentication Flow
-
-The authentication system follows these key flows:
-
-1. **Registration Flow**:
-   - User submits registration form with email and password
-   - Server validates input with comprehensive validation rules and checks for existing email
-   - Password is validated for security requirements (8+ chars, uppercase, lowercase, number, special character)
-   - Email is validated for format, length, and security
-   - Password is hashed using bcrypt
-   - New user record is created in the database with `isApproved: false` (except first user)
-   - First user is automatically approved and made admin
-   - For approved users: JWT token is generated and user is logged in automatically
-   - For pending users: Registration success message indicates approval is required
-   - Session record is created only for approved users
-
-2. **Login Flow**:
-   - User submits login form with email and password (with comprehensive validation)
-   - Server validates credentials against the database
-   - Server checks if user account is approved (`isApproved: true`)
-   - Unapproved users receive error message about pending approval
-   - On successful validation of approved users, a new session is created
-   - JWT token is generated with user ID and admin status
-   - Session record is created in the database with expiration
-   - Token is stored in an HTTP-only cookie
-   - User is redirected to the main application
-   - Old sessions are cleaned up on successful login
-
-3. **Authentication Check Flow**:
-   - Client makes requests with the JWT cookie
-   - Server middleware validates the JWT token
-   - If valid, the user's ID is attached to the request
-   - If invalid or expired, the user is redirected to login
-   - Protected routes/APIs check for the authenticated user
-
-4. **User Administration Flow**:
-   - Admin users can access the user management interface at `/admin`
-   - Interface displays users in two sections: "Needs Approval" and approved users
-   - "Needs Approval" section shows pending users with approve/delete actions
-   - Admin capabilities include:
-     - Approving pending user accounts
-     - Deleting unapproved user accounts
-     - Creating new users with temporary passwords (auto-approved)
-     - Resetting user passwords to temporary values
-     - Toggling user admin status
-     - Viewing user registration dates and names
-   - Only users with admin flag can access these functions
-   - Admin middleware protects all admin API routes
-
-5. **User Approval Flow**:
-   - New users register but cannot access the application until approved
-   - Unapproved users see approval pending message during registration
-   - Login attempts by unapproved users return error message
-   - Admin sees pending users in dedicated "Needs Approval" section
-   - Admin can approve users (sets `isApproved: true`) or delete accounts
-   - Approved users can immediately log in and access the application
-
-### Client-Server Architecture
-
-The database implementation follows a client-server architecture:
-
-1. **Server-side**: Next.js API routes handle database operations using Prisma
-2. **Client-side**: JavaScript code makes API requests to the server
-3. **Abstraction Layer**: Storage API maintains compatibility with previous code
-
-This architecture keeps Prisma on the server-side only, avoiding browser compatibility issues.
-
-### API Layer
-
-Database operations are handled through a central API endpoint at `/api/db`:
+The upgrade system is designed to be extensible for future schema changes:
 
 ```javascript
-// API route in src/app/api/db/route.js
-export async function POST(request) {
-  try {
-    const { operation, params } = await request.json();
-    
-    // Handle different database operations
-    switch (operation) {
-      case 'getSetting':
-        return await handleGetSetting(params);
-      case 'getSettings':
-        return await handleGetSettings(params);
-      // ... more operation handlers
-    }
-  } catch (error) {
-    // Error handling
-  }
+// Current upgrade path: 2.0.0 → 2.1.0
+async function upgrade_2_0_0_to_2_1_0() {
+  // Adds isApproved column to User table
+  // Auto-approves existing users
+}
+
+// Future upgrade paths (examples):
+async function upgrade_2_1_0_to_2_2_0() {
+  // Your next schema change
+}
+
+async function upgrade_2_2_0_to_3_0_0() {
+  // Major version upgrade
 }
 ```
 
-Operations are dispatched to individual handler functions that interact with the Prisma client.
+#### Incremental Upgrade Support
 
-### Authentication API Endpoints
+The system supports chained upgrades:
+- **Direct upgrades**: 2.0.0 → 2.1.0
+- **Chained upgrades**: 2.0.0 → 2.1.0 → 2.2.0 (future)
+- **Automatic path detection**: System determines required upgrade sequence
 
-Authentication is handled through dedicated API routes:
+### Upgrade Tools
 
-```javascript
-// Authentication API routes structure
-/api/auth/
-  ├─ register/ - Handles user registration
-  ├─ login/ - Handles user login with session creation
-  ├─ logout/ - Handles user logout and session cleanup
-  ├─ me/ - Gets current authenticated user data
-  └─ change-password/ - Handles password changes for authenticated users
+#### 1. CLI Upgrade Tool
 
-/api/admin/
-  └─ users/
-      ├─ route.js - Lists all users (GET) and creates new users (POST)
-      └─ [id]/
-          ├─ route.js - Updates user details (PUT) and deletes users (DELETE)
-          ├─ approve/ - Approves pending user accounts (admin only)
-          ├─ reset-password/ - Resets user password (admin only)
-          └─ toggle-admin/ - Toggles user admin status
+**Location**: `scripts/upgrade-db-standalone.js`
+
+**Usage**:
+```bash
+# Check if upgrade is needed
+npm run db:check
+
+# Perform upgrade if needed
+npm run db:upgrade
+
+# Force upgrade regardless of current status
+node scripts/upgrade-db-standalone.js --force
+
+# Show help
+node scripts/upgrade-db-standalone.js --help
 ```
 
-### Client-Side Storage API
+**Features**:
+- ✅ **Standalone operation**: Works independently of Next.js application
+- ✅ **Automatic backups**: Creates database backup before upgrade
+- ✅ **Data preservation**: All existing data maintained during upgrade
+- ✅ **Version verification**: Confirms successful upgrade completion
+- ✅ **Detailed logging**: Comprehensive status and error reporting
+- ✅ **Safety checks**: Original database unchanged on failure
 
-The storage API in `src/lib/storage.js` maintains the same interface as before, but now translates calls into API requests and includes the authenticated user's context:
+#### 2. Web Admin Interface
+
+**Access**: `/admin` page → Database Management section
+
+**Features**:
+- Real-time database status checking
+- Visual upgrade interface with progress indicators
+- Environment and version information display
+- Database statistics overview
+- Secure admin-only access
+
+**API Endpoint**: `/api/admin/database`
+- **GET**: Retrieve database status and version information
+- **POST**: Trigger manual database upgrade
+
+#### 3. Database API Functions
+
+Core functions available in `src/lib/db.js`:
 
 ```javascript
-// Helper function to make API requests
-async function dbRequest(operation, params = {}) {
-  const options = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ operation, params }),
-    credentials: 'include' // Important for authentication cookies
-  };
-  
-  return fetchWithErrorHandling('/api/db', options, operation);
-}
+// Version management
+getDatabaseVersion()           // Get current database version
+checkUpgradeNeeded()          // Check if upgrade is available
+upgradeDatabase(from, to)     // Perform database upgrade
 
-// Example storage API method
-const storage = {
-  get: async (keys) => {
-    // Translate get request to API call
-    if (typeof keys === 'string') {
-      const data = await dbRequest('getSetting', { key: keys });
-      return data;
-    }
-    // ... handle other cases
-  },
-  // ... other methods
-};
+// Database statistics
+getDbStats()                  // Get database record counts
 ```
 
-### Error Handling
+### Upgrade Process
 
-Robust error handling is implemented at multiple levels:
+#### Current Upgrade: 2.0.0 → 2.1.0
 
-1. **API Routes**: Server-side error handling with appropriate HTTP status codes
-2. **Client API Wrapper**: Utility for handling API responses and errors
-3. **Storage API**: Fallback to defaults when errors occur
-4. **Authentication Errors**: Specialized handling for authentication failures
+**Purpose**: Add user approval workflow
 
-The error handling utility provides consistent formatting and user feedback:
+**Changes**:
+1. **Schema modification**: Add `isApproved` column to User table
+   ```sql
+   ALTER TABLE User ADD COLUMN isApproved BOOLEAN DEFAULT 0;
+   ```
 
+2. **Data migration**: Auto-approve existing users
+   ```javascript
+   await prisma.user.updateMany({
+     where: { isApproved: false },
+     data: { isApproved: true }
+   });
+   ```
+
+3. **Version update**: Update database version to 2.1.0
+
+#### Safety Features
+
+- **Automatic backups**: Database copied before any changes
+- **Rollback safety**: Original database preserved on failure
+- **Column existence checking**: Prevents duplicate schema changes
+- **Transaction safety**: Changes are applied atomically
+- **Verification**: Post-upgrade validation confirms success
+
+### Adding Future Schema Changes
+
+#### Step 1: Update Environment Variables
+```bash
+# In .env.local
+DATABASE_TARGET_VERSION="2.2.0"
+```
+
+#### Step 2: Create Upgrade Function
 ```javascript
-export async function fetchWithErrorHandling(url, options, operation, showToastOnError = true) {
+// In scripts/upgrade-db-standalone.js
+async function upgrade_2_1_0_to_2_2_0() {
   try {
-    const response = await fetch(url, options);
+    console.log('Executing upgrade 2.1.0 → 2.2.0: Your feature description');
     
-    if (!response.ok) {
-      // Handle authentication errors specifically
-      if (response.status === 401) {
-        // Redirect to login page if unauthenticated
-        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
-        return;
-      }
-      
-      // Process other error responses
-      // ...
-    }
+    // Example: Add new table
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS UserProfiles (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        bio TEXT,
+        avatar TEXT,
+        FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE
+      )`;
     
-    return await response.json();
-  } catch (error) {
-    handleApiError(error, operation, showToastOnError);
-    throw error;
-  }
-}
-```
-
-### Database Initialization
-
-The database is initialized with the `initializeDatabase()` function in `src/lib/db.js`, now including initial admin user creation:
-
-```javascript
-export async function initializeDatabase() {
-  try {
-    // Check if the DatabaseInfo record exists
-    const dbInfo = await prisma.databaseInfo.findUnique({
-      where: { id: 1 },
-    });
-
-    // If not, create it with the initial version
-    if (!dbInfo) {
-      await prisma.databaseInfo.create({
-        data: {
-          id: 1,
-          version: process.env.DATABASE_INIT_VERSION || '2.0.0',
-        },
+    // Example: Add new column
+    await prisma.$executeRaw`ALTER TABLE User ADD COLUMN phoneNumber TEXT`;
+    
+    // Example: Migrate existing data
+    const users = await prisma.user.findMany();
+    for (const user of users) {
+      await prisma.userProfile.create({
+        data: { userId: user.id, bio: 'Default bio' }
       });
-      console.log(`Database initialized with version ${process.env.DATABASE_INIT_VERSION || '2.0.0'}`);
-      
-      // Create initial admin user
-      const hashedPassword = await bcrypt.hash('RoboPrepMe', 12);
-      await prisma.user.create({
-        data: {
-          email: 'admin@example.com',
-          password: hashedPassword,
-          isAdmin: true,
-          firstName: 'Admin',
-          lastName: 'User'
-        }
-      });
-      console.log('Created initial admin user (email: admin@example.com, password: RoboPrepMe)');
     }
-
+    
+    console.log('Upgrade 2.1.0 → 2.2.0 completed successfully');
     return true;
   } catch (error) {
-    console.error('Database initialization error:', error);
+    console.error('Upgrade 2.1.0 → 2.2.0 failed:', error);
     return false;
   }
 }
 ```
 
-### Data Migration Strategy
+#### Step 3: Update Upgrade Logic
+```javascript
+// Add to upgradeDatabase() function
+if (fromVersion === '2.1.0' && toVersion === '2.2.0') {
+  if (!await upgrade_2_1_0_to_2_2_0()) {
+    throw new Error('Upgrade 2.1.0 → 2.2.0 failed');
+  }
+}
+```
 
-For existing installations, data migration follows these steps:
+#### Step 4: Update Prisma Schema
+```prisma
+// Add new models/fields to schema.prisma
+model User {
+  // ... existing fields
+  phoneNumber String?
+  profile     UserProfile?
+}
 
-1. **User Creation**: Create a default admin user
-2. **Settings Migration**: Move global settings to user-specific settings
-3. **Favorites Migration**: Copy global favorites to the default user's favorites
-4. **Recently Used Migration**: Copy global recently used items to the default user's recently used
+model UserProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  bio    String?
+  avatar String?
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
 
-This approach ensures a smooth transition from single-user to multi-user without data loss.
+### Production Deployment
 
-## Environment Configuration
+#### Database Upgrade Workflow
 
-Database and authentication configuration is managed through environment variables:
+1. **Backup production database**:
+   ```bash
+   cp roboprep.db roboprep-backup-$(date +%Y%m%d).db
+   ```
+
+2. **Check upgrade status**:
+   ```bash
+   npm run db:check
+   ```
+
+3. **Perform upgrade**:
+   ```bash
+   npm run db:upgrade
+   ```
+
+4. **Verify upgrade**:
+   ```bash
+   npm run db:check  # Should show "Up to Date"
+   ```
+
+#### Rollback Strategy
+
+If upgrade fails:
+1. **Automatic backup**: System creates backup before upgrade
+2. **Preserved original**: Original database unchanged on failure
+3. **Manual rollback**: Replace database file with backup if needed
+
+### Database Operations
+
+#### Initialization
+
+```javascript
+// Initialize new database
+await initializeDatabase();
+
+// Creates:
+// - DatabaseInfo record with version
+// - Default admin user (admin@example.com / RoboPrepMe)
+// - Core categories and prompts
+```
+
+#### Authentication Implementation
+
+The database supports comprehensive user authentication:
+
+1. **User Account Management**:
+   - Secure registration with email validation
+   - Password encryption using bcrypt (12 rounds)
+   - Login/logout with session management
+   - User approval workflow (new users require admin approval)
+   - Admin-controlled user management
+
+2. **Session Management**:
+   - JWT-based authentication tokens
+   - Secure HTTP-only cookies
+   - 12-hour session expiration
+   - Session cleanup on logout
+
+3. **Authorization**:
+   - Role-based access (admin vs. regular user)
+   - Protected API routes with authentication middleware
+   - Admin panel for user management (`/admin`)
+
+#### Multi-User Data Isolation
+
+The schema supports proper multi-user data separation:
+
+1. **User-Specific Data**:
+   - Favorites (UserFavorite)
+   - Recently used prompts (UserRecentlyUsed)
+   - Settings (UserSetting)
+   - AI responses (Response) with user attribution
+
+2. **Shared Data**:
+   - Prompts accessible to all users
+   - Categories and tags are global
+   - AI responses visible to all but attributed to creator
+
+### API Layer Architecture
+
+#### Database API Endpoint
+
+Central API route at `/api/db` handles all database operations:
+
+```javascript
+// API request structure
+{
+  "operation": "getSetting|savePrompt|etc",
+  "params": { /* operation-specific parameters */ }
+}
+
+// Supported operations:
+// - getSetting, getSettings, setSetting
+// - getPrompts, savePrompt, deletePrompt
+// - getFavorites, addFavorite, removeFavorite
+// - getRecentlyUsed, addRecentlyUsed
+// - getResponses, saveResponse, deleteResponse
+// - getCategories, getTags
+```
+
+#### Authentication API Endpoints
 
 ```
-# Database Settings
+/api/auth/
+├─ register/        # User registration with validation
+├─ login/          # User login with session creation
+├─ logout/         # Session termination
+├─ me/             # Current user information
+└─ change-password/ # Password update for authenticated users
+
+/api/admin/
+├─ users/          # User management (list, create)
+├─ users/[id]/     # Individual user operations
+│  ├─ route.js     # Update/delete user
+│  ├─ approve/     # Approve pending user
+│  ├─ reset-password/ # Admin password reset
+│  └─ toggle-admin/   # Toggle admin status
+└─ database/       # Database management and upgrades
+```
+
+#### Client-Side Storage API
+
+The storage API (`src/lib/storage.js`) maintains compatibility with previous localStorage implementation:
+
+```javascript
+const storage = {
+  get: async (keys) => {
+    // Fetch from database via API
+  },
+  
+  set: async (items) => {
+    // Save to database via API
+  },
+  
+  remove: async (keys) => {
+    // Remove from database via API
+  },
+  
+  // Specialized methods
+  getResponses: async () => { /* ... */ },
+  saveResponse: async (response) => { /* ... */ },
+  // ...
+};
+```
+
+### Performance Considerations
+
+#### Database Optimization
+
+- **Indexed fields**: `usedAt` in UserRecentlyUsed for efficient recent queries
+- **Unique constraints**: Prevent duplicate favorites and recently used entries
+- **Foreign key constraints**: Ensure data integrity with cascading deletes
+- **Connection pooling**: Configurable via `DATABASE_POOL_SIZE`
+
+#### Query Optimization
+
+- **Relation loading**: Prisma `include` for efficient data fetching
+- **Selective fields**: Only fetch required data in user management
+- **Batch operations**: Efficient tag and category management
+
+### Error Handling
+
+#### Multi-Level Error Handling
+
+1. **Database Level**: Prisma error handling with proper error types
+2. **API Level**: HTTP status codes and error messages
+3. **Client Level**: User-friendly error messages and fallbacks
+4. **Authentication Level**: Specialized handling for auth failures
+
+```javascript
+// Example error handling in API routes
+try {
+  const result = await prisma.user.create(userData);
+  return NextResponse.json(result);
+} catch (error) {
+  if (error.code === 'P2002') {
+    return NextResponse.json(
+      { error: 'User already exists' },
+      { status: 409 }
+    );
+  }
+  return NextResponse.json(
+    { error: 'Database error' },
+    { status: 500 }
+  );
+}
+```
+
+### Environment Configuration
+
+#### Required Environment Variables
+
+```bash
+# Database settings
 DATABASE_URL="file:../roboprep.db"
 DATABASE_POOL_SIZE=5
 DATABASE_INIT_VERSION="2.0.0"
+DATABASE_TARGET_VERSION="2.1.0"
 
-# Authentication Settings
+# Authentication settings
 JWT_SECRET="your-secure-random-secret"
 JWT_EXPIRATION="12h"
 COOKIE_NAME="robo_auth"
@@ -548,69 +616,46 @@ COOKIE_SECURE=true
 COOKIE_HTTP_ONLY=true
 ```
 
-These settings can be configured in the `.env.local` file.
+#### Development vs. Production
 
-## Versioning
+- **Development**: Uses file-based SQLite with relative paths
+- **Production**: Configurable database location and security settings
+- **Upgrade system**: Works in both environments with appropriate safeguards
 
-The database includes version tracking to manage future schema changes:
+### Monitoring & Maintenance
 
-- Version is stored in the `DatabaseInfo` table
-- The version is set during initial database creation
-- Functions `getDatabaseVersion()` and `updateDatabaseVersion()` manage version information
+#### Database Statistics
 
-## Benefits of the Multi-User Architecture
+Available through admin interface and API:
+- User count (total, approved, pending)
+- Prompt count (total, user-created, core)
+- Response count with token usage
+- Category and tag counts
+- Session and setting counts
 
-1. **User Isolation**: Proper separation of user data for favorites, recent usage, and settings
-2. **Security**: Modern authentication with JWT and secure cookie handling
-3. **Scalability**: Support for multiple users with proper data isolation
-4. **Administration**: User management capabilities for administrative users
-5. **Flexibility**: Shared content with individualized user experiences
-6. **Migration Path**: Backward compatibility with legacy data structures
+#### Regular Maintenance
 
-## Future Considerations
+- **Session cleanup**: Expired sessions automatically handled
+- **Database backups**: Automatic backup before upgrades
+- **Version monitoring**: Admin interface shows current vs. target version
+- **Error logging**: Comprehensive logging for troubleshooting
 
-### Database Management
-- Database backups and restoration functionality
-- More advanced migration strategies for schema changes
-- Potential cloud database support
-- Performance optimizations for larger datasets
-- Caching strategies for frequently accessed data
+### Future Enhancements
 
-### Authentication Enhancements
-- OAuth integration for social login
-- Two-factor authentication
-- Email verification for new accounts
-- Account lockout after failed attempts
-- More granular permission system
-- ✅ **Implemented**: Password strength requirements with real-time validation
-- ✅ **Implemented**: User approval workflow for new accounts
-- Session management UI for users
-- Remember me functionality
-- Password reset via email
-- Bulk user approval/management tools
-- User role management beyond admin/regular user
+#### Planned Database Features
 
-### Multi-User Enhancements
-- User groups and team features
-- Sharing prompts between users
-- User activity tracking and analytics
-- User preferences for OpenAI integration
-- User quota management
-- Response privacy options (private vs. public responses)
-- Enhanced user identification in the UI
+- **Performance optimizations**: Query optimization and caching strategies
+- **Advanced user management**: Role-based permissions beyond admin/user
+- **Database analytics**: Usage patterns and performance metrics
+- **Backup automation**: Scheduled database backups
+- **Cloud database support**: Migration path to hosted databases
 
-### Tag System Enhancements
-- Server-side tag filtering for improved performance with large datasets
-- Tag analytics to show most commonly used tags
-- Tag suggestion system based on prompt content analysis
-- Advanced filtering options:
-  - Support for OR logic (show prompts with ANY selected tag)
-  - Exclusion filtering (hide prompts with specific tags)
-  - Filter persistence across sessions
-  - Tag category grouping or hierarchical tags
+#### Upgrade System Enhancements
 
-### Category Improvements
-- Custom category ordering (drag-and-drop reordering)
-- Category color coding or icons
-- Nested subcategories for more organizational flexibility
-- Category-based permission system for multi-user environments
+- **Automated testing**: Unit tests for upgrade functions
+- **Migration rollback**: Automated rollback capabilities
+- **Preview mode**: Test upgrades without making changes
+- **Batch upgrades**: Support for skipping intermediate versions
+- **Progress tracking**: Real-time upgrade progress in web interface
+
+This comprehensive database system provides a solid foundation for the RoboPrep application with built-in scalability, security, and maintainability features.

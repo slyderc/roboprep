@@ -13,7 +13,9 @@
     "db:setup": "npx prisma migrate dev --name init",
     "db:reset": "npx prisma migrate reset --force",
     "db:init": "node scripts/init-db.js",
-    "db:populate": "node scripts/populate-db.js"
+    "db:populate": "node scripts/populate-db.js",
+    "db:upgrade": "node scripts/upgrade-db-standalone.js",
+    "db:check": "node scripts/upgrade-db-standalone.js --check"
   },
   "dependencies": {
     "@eslint/config-array": "^0.20.0",
@@ -22,6 +24,7 @@
     "bcryptjs": "^3.0.2",
     "cookies-js": "^1.2.3",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
     "dotenv-webpack": "^8.1.0",
     "glob": "^10.3.10",
     "jsonwebtoken": "^9.0.2",

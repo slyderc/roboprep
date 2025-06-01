@@ -172,6 +172,33 @@ export async function isAdmin() {
 }
 
 /**
+ * Authenticate and authorize admin access
+ * @param {Request} request - Request object (optional, uses cookies)
+ * @returns {Promise<Object|null>} - User object if admin, null otherwise
+ */
+export async function authenticateAdmin(request = null) {
+  try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      console.log('No authenticated user found');
+      return null;
+    }
+    
+    if (!user.isAdmin) {
+      console.log(`User ${user.email} is not an admin`);
+      return null;
+    }
+    
+    console.log(`Admin access granted for user: ${user.email}`);
+    return user;
+  } catch (error) {
+    console.error('Error authenticating admin:', error);
+    return null;
+  }
+}
+
+/**
  * Initialize the default admin user
  */
 export async function initializeDefaultAdmin() {
