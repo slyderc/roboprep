@@ -38,7 +38,6 @@ export function middleware(request) {
   
   // If no token is present, redirect to login
   if (!token) {
-    console.log(`No token found for path: ${path}, redirecting to login`);
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     
@@ -55,7 +54,6 @@ export function middleware(request) {
   
   // Assume token is valid if it exists
   // We'll let the API routes perform full verification
-  console.log(`Token exists for path: ${path}, allowing access`);
   
   // For admin paths, we need to check if user is admin
   // Extract basic info from token without full verification
@@ -78,7 +76,6 @@ export function middleware(request) {
   // Check if the path requires admin access
   if (adminPaths.some(p => path.startsWith(p)) && !isAdmin) {
     // If the user is not an admin, redirect to home
-    console.log(`User is not admin, redirecting from admin path: ${path}`);
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);

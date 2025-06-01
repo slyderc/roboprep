@@ -50,11 +50,7 @@ export function generateToken(user) {
  */
 export function verifyToken(token) {
   try {
-    console.log(`Verifying token starting with: ${token.substring(0, 20)}...`);
-    console.log(`Using JWT_SECRET: ${JWT_SECRET.substring(0, 10)}...`);
-    
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('Token verified successfully:', decoded);
     return decoded;
   } catch (error) {
     console.error('Token verification failed:', error.message);
@@ -115,18 +111,14 @@ export async function getCurrentUser() {
     const token = cookies().get(COOKIE_NAME)?.value;
     
     if (!token) {
-      console.log('No auth token found in cookies');
       return null;
     }
     
     const payload = verifyToken(token);
     
     if (!payload) {
-      console.log('Invalid token, verification failed');
       return null;
     }
-    
-    console.log(`Token verified for user ID: ${payload.userId}`);
     
     // Check if session exists and is valid
     const session = await prisma.session.findFirst({
@@ -142,11 +134,9 @@ export async function getCurrentUser() {
     });
     
     if (!session) {
-      console.log('No valid session found for token');
       return null;
     }
     
-    console.log(`Found valid session for user: ${session.user.email}`);
     return session.user;
   } catch (error) {
     console.error('Error getting current user:', error);
@@ -181,16 +171,13 @@ export async function authenticateAdmin(request = null) {
     const user = await getCurrentUser();
     
     if (!user) {
-      console.log('No authenticated user found');
       return null;
     }
     
     if (!user.isAdmin) {
-      console.log(`User ${user.email} is not an admin`);
       return null;
     }
     
-    console.log(`Admin access granted for user: ${user.email}`);
     return user;
   } catch (error) {
     console.error('Error authenticating admin:', error);
