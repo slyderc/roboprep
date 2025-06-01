@@ -68,6 +68,8 @@ This repository contains a web application version of "Robo Show Prep from Radio
 6. **Security & Authentication**
    - Cloudflare Turnstile integration for bot protection
    - JWT-based session management with secure cookies
+   - User approval workflow: new users require administrator approval
+   - Comprehensive password validation with real-time feedback
    - Reusable Turnstile components and hooks for consistent implementation
    - Environment-based security (production vs. development)
    - User session isolation and secure password storage
@@ -90,6 +92,8 @@ This repository contains a web application version of "Robo Show Prep from Radio
   - `ResponseHistoryModal.jsx`: Manages saved responses
   - `ResponseListModal.jsx`: Lists all responses for a prompt
   - `TurnstileWidget.jsx`: Reusable Turnstile security component
+  - `PasswordStrengthIndicator.jsx`: Real-time password validation feedback
+  - `EmailValidator.jsx`: Comprehensive email validation component
   - `AccountInfo.jsx`: User account information and management
 - `/webpage/src/hooks/`: Custom React hooks
   - `useTurnstile.js`: Reusable hook for Turnstile integration and bot protection
@@ -104,6 +108,7 @@ This repository contains a web application version of "Robo Show Prep from Radio
   - `apiClient.js`: Client-side API wrapper
   - `auth.js`: Authentication utilities and JWT handling
   - `turnstile.js`: Turnstile verification and security utilities
+  - `validation.js`: Comprehensive form validation with security-focused rules
   - `toastUtil.js`: Toast notification management
 - `/webpage/src/styles/`: Global CSS and theme definitions
   - `globals.css`: Contains theme variables and global styles
@@ -229,6 +234,56 @@ Reusable component that:
 - **Rate Limiting**: Built-in protection against rapid-fire requests
 - **Token Uniqueness**: Each widget gets unique callback names to prevent interference
 
+## User Approval Workflow
+
+### Administrator Approval System
+The application implements a comprehensive user approval workflow:
+
+- **New User Registration**: All new users (except the first admin) require administrator approval
+- **Approval Process**: New users can register but cannot access the application until approved
+- **Admin Dashboard**: Dedicated "Needs Approval" section for pending user accounts
+- **Approval Actions**: Administrators can approve or delete pending users
+- **User Communication**: Clear messaging to users about approval status
+
+### Approval Implementation Details
+
+#### Database Schema
+- `isApproved` field added to User model with default `false`
+- First user (admin) is automatically approved
+- Admin-created users are automatically approved
+
+#### Security Features
+- Login blocked for unapproved users with informative error messages
+- Registration success shows approval pending message
+- Admin interface restricted to approved admin users only
+
+## Form Validation System
+
+### Comprehensive Validation Framework
+The application includes robust client and server-side validation:
+
+#### Password Validation (`validation.js`)
+- **Minimum Requirements**: 8+ characters, uppercase, lowercase, number, special character
+- **Security-Safe Characters**: Only allows `!@#$%^&*()_+-=[]{}|;:,.<>?`
+- **Real-time Feedback**: Live password strength indicator with visual checklist
+- **Unsafe Character Prevention**: Blocks SQL injection and XSS characters
+
+#### Email Validation
+- **Comprehensive Checks**: Format validation, length limits, domain validation
+- **Security Filtering**: Prevents dangerous characters and consecutive dots
+- **Real-time Validation**: Instant feedback as users type
+
+#### Visual Validation Features
+- **Inline Checkmarks**: Green checkmarks appear inside input fields when valid
+- **Color-coded Borders**: Green for valid, red for invalid inputs
+- **Clean Interface**: Removed redundant warning messages for decluttered UI
+- **Blue Incomplete Items**: Better readability for uncompleted requirements
+
+#### Form Submission Controls
+- **Sign-in Page**: Button disabled until email validation, password entry, and Turnstile completion
+- **Registration Page**: Comprehensive validation for all fields before enabling submission
+- **Server-side Validation**: Matching validation logic on backend for security
+
 ### Build System Optimizations
 
 The application includes optimized build configurations:
@@ -294,6 +349,8 @@ The web application uses these key components:
 - `ResponseHistoryModal.jsx`: Displays saved response history with editing
 - `ResponseListModal.jsx`: Lists all responses for a prompt with variables display
 - `TurnstileWidget.jsx`: Reusable Turnstile security widget with environment detection
+- `PasswordStrengthIndicator.jsx`: Real-time password validation with visual feedback
+- `EmailValidator.jsx`: Comprehensive email validation with inline indicators
 - `AccountInfo.jsx`: User account information and management interface
 
 Key design patterns:
@@ -382,9 +439,13 @@ When adding new features:
    - Verify graceful handling of missing environment variables
 7. Security and authentication:
    - Test user registration and login with Turnstile verification
+   - Verify user approval workflow (registration → approval → login)
+   - Test password validation with all security requirements
+   - Verify email validation with various input formats
+   - Test form submission controls (disabled until all validation passes)
    - Verify bot protection works in production environment
    - Test JWT session management and logout functionality
-   - Verify admin interface access controls
+   - Verify admin interface access controls and approval actions
    - Test password hashing and security measures
 8. Build system:
    - Test different build configurations (`npm run build`, `build:quiet`, `build:strict`)

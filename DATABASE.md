@@ -34,6 +34,7 @@ model User {
   firstName     String?
   lastName      String?
   isAdmin       Boolean   @default(false)
+  isApproved    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   settings      UserSetting[]
@@ -208,13 +209,17 @@ The application implements a robust authentication system with the following fea
 
 3. **Authorization**:
    - Role-based access control (admin vs. regular user)
+   - User approval workflow: new users require administrator approval
    - Protected API routes requiring authentication via middleware
-   - Administrative functions restricted to admin users
-   - Admin panel for user management at `/admin`
-   - Admin ability to toggle user admin status
+   - Administrative functions restricted to approved admin users
+   - Admin panel for user management and approval at `/admin`
+   - Admin ability to approve pending users and toggle user admin status
 
 4. **Security Measures**:
    - Password hashing with bcrypt (12 rounds)
+   - Comprehensive password validation with security-safe character restrictions
+   - Email validation with security filtering
+   - User approval workflow for new account security
    - CSRF protection via secure HTTP-only cookies
    - Session expiration and cleanup
    - Session fixation prevention
@@ -293,18 +298,22 @@ The authentication system follows these key flows:
 
 1. **Registration Flow**:
    - User submits registration form with email and password
-   - Server validates input and checks for existing email
+   - Server validates input with comprehensive validation rules and checks for existing email
+   - Password is validated for security requirements (8+ chars, uppercase, lowercase, number, special character)
+   - Email is validated for format, length, and security
    - Password is hashed using bcrypt
-   - New user record is created in the database
-   - Initial user settings are created
-   - JWT token is generated and sent to the client
-   - User is logged in automatically
-   - Session record is created in the database
+   - New user record is created in the database with `isApproved: false` (except first user)
+   - First user is automatically approved and made admin
+   - For approved users: JWT token is generated and user is logged in automatically
+   - For pending users: Registration success message indicates approval is required
+   - Session record is created only for approved users
 
 2. **Login Flow**:
-   - User submits login form with email and password
+   - User submits login form with email and password (with comprehensive validation)
    - Server validates credentials against the database
-   - On successful validation, a new session is created
+   - Server checks if user account is approved (`isApproved: true`)
+   - Unapproved users receive error message about pending approval
+   - On successful validation of approved users, a new session is created
    - JWT token is generated with user ID and admin status
    - Session record is created in the database with expiration
    - Token is stored in an HTTP-only cookie
@@ -320,14 +329,25 @@ The authentication system follows these key flows:
 
 4. **User Administration Flow**:
    - Admin users can access the user management interface at `/admin`
-   - Interface displays all users with their details and status
+   - Interface displays users in two sections: "Needs Approval" and approved users
+   - "Needs Approval" section shows pending users with approve/delete actions
    - Admin capabilities include:
-     - Creating new users with temporary passwords
+     - Approving pending user accounts
+     - Deleting unapproved user accounts
+     - Creating new users with temporary passwords (auto-approved)
      - Resetting user passwords to temporary values
      - Toggling user admin status
      - Viewing user registration dates and names
    - Only users with admin flag can access these functions
    - Admin middleware protects all admin API routes
+
+5. **User Approval Flow**:
+   - New users register but cannot access the application until approved
+   - Unapproved users see approval pending message during registration
+   - Login attempts by unapproved users return error message
+   - Admin sees pending users in dedicated "Needs Approval" section
+   - Admin can approve users (sets `isApproved: true`) or delete accounts
+   - Approved users can immediately log in and access the application
 
 ### Client-Server Architecture
 
@@ -383,6 +403,7 @@ Authentication is handled through dedicated API routes:
       ├─ route.js - Lists all users (GET) and creates new users (POST)
       └─ [id]/
           ├─ route.js - Updates user details (PUT) and deletes users (DELETE)
+          ├─ approve/ - Approves pending user accounts (admin only)
           ├─ reset-password/ - Resets user password (admin only)
           └─ toggle-admin/ - Toggles user admin status
 ```
@@ -561,10 +582,13 @@ The database includes version tracking to manage future schema changes:
 - Email verification for new accounts
 - Account lockout after failed attempts
 - More granular permission system
-- Password strength requirements
+- ✅ **Implemented**: Password strength requirements with real-time validation
+- ✅ **Implemented**: User approval workflow for new accounts
 - Session management UI for users
 - Remember me functionality
 - Password reset via email
+- Bulk user approval/management tools
+- User role management beyond admin/regular user
 
 ### Multi-User Enhancements
 - User groups and team features
