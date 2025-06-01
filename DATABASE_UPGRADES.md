@@ -16,7 +16,7 @@ When database schema changes (like adding the `isApproved` column), a "chicken-a
 ### 1. CLI-Only Database Upgrade (Safest)
 
 **Command**: `npm run db:upgrade`  
-**File**: `scripts/upgrade-db-standalone.js`
+**File**: `scripts/upgrade-db-standalone.mjs`
 
 ✅ **Advantages**:
 - Uses raw SQL, no Prisma client dependency issues
@@ -34,7 +34,7 @@ When database schema changes (like adding the `isApproved` column), a "chicken-a
 ### 2. Full Production Upgrade (Recommended)
 
 **Command**: `npm run db:upgrade-production`  
-**File**: `scripts/production-upgrade.js`
+**File**: `scripts/production-upgrade.mjs`
 
 ✅ **Advantages**:
 - Complete end-to-end upgrade process
@@ -107,7 +107,7 @@ If the automated script fails, follow these manual steps:
 ### 1. Database Upgrade
 ```bash
 cd /path/to/roboprep/webpage
-npm run db:upgrade  # or node scripts/upgrade-db-standalone.js
+npm run db:upgrade  # or node scripts/upgrade-db-standalone.mjs
 ```
 
 ### 2. Prisma Client Regeneration

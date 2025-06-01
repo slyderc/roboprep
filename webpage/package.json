@@ -1,7 +1,6 @@
 {
   "name": "robo-show-prep",
   "version": "0.1.0",
-  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,10 +14,10 @@
     "db:reset": "npx prisma migrate reset --force",
     "db:init": "node scripts/init-db.js",
     "db:populate": "node scripts/populate-db.js",
-    "db:upgrade": "node scripts/upgrade-db-standalone.js",
-    "db:check": "node scripts/upgrade-db-standalone.js --check",
-    "db:upgrade-production": "node scripts/production-upgrade.js",
-    "db:upgrade-production-check": "node scripts/production-upgrade.js --check"
+    "db:upgrade": "node scripts/upgrade-db-standalone.mjs",
+    "db:check": "node scripts/upgrade-db-standalone.mjs --check",
+    "db:upgrade-production": "node scripts/production-upgrade.mjs",
+    "db:upgrade-production-check": "node scripts/production-upgrade.mjs --check"
   },
   "dependencies": {
     "@eslint/config-array": "^0.20.0",
