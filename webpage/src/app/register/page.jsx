@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useTurnstile } from '@/hooks/useTurnstile';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function RegisterPage() {
@@ -21,9 +20,7 @@ export default function RegisterPage() {
   
   const { register } = useAuth();
   const router = useRouter();
-  
-  // Use the Turnstile hook for all Turnstile functionality
-  const { validateAndGetToken } = useTurnstile('turnstile-widget-register');
+  const turnstileRef = useRef();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,8 +45,8 @@ export default function RegisterPage() {
     
     setIsLoading(true);
 
-    // Validate Turnstile token using the hook
-    const { token, isValid, error: turnstileError } = validateAndGetToken();
+    // Validate Turnstile token using the widget ref
+    const { token, isValid, error: turnstileError } = turnstileRef.current?.validateAndGetToken() || { token: null, isValid: true, error: null };
     
     if (!isValid) {
       setError(turnstileError);
@@ -201,7 +198,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Turnstile Widget */}
-          <TurnstileWidget widgetId="turnstile-widget-register" />
+          <TurnstileWidget ref={turnstileRef} widgetId="turnstile-widget-register" />
 
           <div>
             <button

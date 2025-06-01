@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
-import { useTurnstile } from '@/hooks/useTurnstile';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
 function LoginForm() {
@@ -18,17 +17,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '/';
-  
-  // Use the Turnstile hook for all Turnstile functionality
-  const { validateAndGetToken } = useTurnstile('turnstile-widget');
+  const turnstileRef = useRef();
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission
     setError('');
     setIsLoading(true);
     
-    // Validate Turnstile token using the hook
-    const { token, isValid, error: turnstileError } = validateAndGetToken();
+    // Validate Turnstile token using the widget ref
+    const { token, isValid, error: turnstileError } = turnstileRef.current?.validateAndGetToken() || { token: null, isValid: true, error: null };
     
     if (!isValid) {
       setError(turnstileError);
@@ -125,7 +122,7 @@ function LoginForm() {
           </div>
 
           {/* Turnstile Widget */}
-          <TurnstileWidget widgetId="turnstile-widget" />
+          <TurnstileWidget ref={turnstileRef} widgetId="turnstile-widget" />
 
           <div>
             <button

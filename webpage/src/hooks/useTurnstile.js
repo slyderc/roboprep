@@ -39,11 +39,14 @@ export function useTurnstile(widgetId = 'turnstile-widget') {
     
     const initTurnstile = () => {
       if (window.turnstile && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
-        const widget = window.turnstile.render(`#${widgetId}`, {
-          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-          callback: callbackName,
-        });
-        setTurnstileWidgetId(widget);
+        const element = document.getElementById(widgetId);
+        if (element && !element.hasChildNodes()) {
+          const widget = window.turnstile.render(`#${widgetId}`, {
+            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            callback: callbackName,
+          });
+          setTurnstileWidgetId(widget);
+        }
       }
     };
     
@@ -68,7 +71,7 @@ export function useTurnstile(widgetId = 'turnstile-widget') {
       setTurnstileWidgetId(null);
       setTurnstileToken(null);
     };
-  }, [shouldShowTurnstile, widgetId, callbackName, turnstileWidgetId]);
+  }, [shouldShowTurnstile, widgetId, callbackName]);
   
   // Token validation utility
   const validateAndGetToken = () => {

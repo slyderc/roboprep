@@ -1,7 +1,12 @@
 import { useTurnstile } from '@/hooks/useTurnstile';
+import { forwardRef, useImperativeHandle } from 'react';
 
-export default function TurnstileWidget({ widgetId = 'turnstile-widget', className = '' }) {
-  const { shouldShowTurnstile, isLocalDevelopment, isClient, widgetProps } = useTurnstile(widgetId);
+const TurnstileWidget = forwardRef(({ widgetId = 'turnstile-widget', className = '' }, ref) => {
+  const { shouldShowTurnstile, isLocalDevelopment, isClient, widgetProps, validateAndGetToken } = useTurnstile(widgetId);
+  
+  useImperativeHandle(ref, () => ({
+    validateAndGetToken
+  }), [validateAndGetToken]);
   
   if (!shouldShowTurnstile) {
     return isClient && isLocalDevelopment ? (
@@ -16,4 +21,8 @@ export default function TurnstileWidget({ widgetId = 'turnstile-widget', classNa
       <div {...widgetProps} />
     </div>
   );
-}
+});
+
+TurnstileWidget.displayName = 'TurnstileWidget';
+
+export default TurnstileWidget;
