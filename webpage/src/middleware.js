@@ -61,10 +61,14 @@ export function middleware(request) {
   // Extract basic info from token without full verification
   let isAdmin = false;
   try {
-    // Basic token parsing (not verification)
+    // Basic token parsing (not verification) - Edge runtime compatible
     const tokenParts = token.split('.');
     if (tokenParts.length === 3) {
-      const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+      // Use atob instead of Buffer for Edge runtime compatibility
+      const base64Payload = tokenParts[1];
+      // Add padding if needed
+      const paddedPayload = base64Payload + '='.repeat((4 - base64Payload.length % 4) % 4);
+      const payload = JSON.parse(atob(paddedPayload));
       isAdmin = payload.isAdmin || false;
     }
   } catch (error) {
