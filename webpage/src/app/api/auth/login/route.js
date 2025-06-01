@@ -104,8 +104,8 @@ export async function POST(request) {
     
     // Get request info for debugging
     const requestHeaders = headers();
-    const host = requestHeaders.get('host') || 'unknown';
-    const origin = requestHeaders.get('origin') || 'unknown';
+    const requestHost = requestHeaders.get('host') || 'unknown';
+    const requestOrigin = requestHeaders.get('origin') || 'unknown';
     
     // For localhost, explicitly ensure no domain is set
     cookieOptions.domain = undefined;
@@ -134,7 +134,7 @@ export async function POST(request) {
       sameSite: 'lax'
     });
     
-    console.log(`Set cookie: ${cookieName}=${session.token.substring(0, 10)}... on host: ${host}`);
+    console.log(`Set cookie: ${cookieName}=${session.token.substring(0, 10)}... on host: ${requestHost}`);
     
     return response;
   } catch (error) {
