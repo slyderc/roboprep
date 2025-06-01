@@ -29,6 +29,13 @@ When using this code, you must:
 - Browse response history for each prompt
 - Include responses in import/export functionality
 
+### Security & Authentication
+- Multi-user authentication system with JWT-based sessions
+- Cloudflare Turnstile bot protection for registration and login (production only)
+- User-specific data isolation for favorites, recently used, and responses
+- Admin interface for user management and system statistics
+- Secure password hashing and session management
+
 ### Prompt Variables
 - Use template variables in the format `{{variable_name}}` 
 - Variables get replaced when using the prompt
@@ -77,6 +84,9 @@ Import prompt packs with duplicate detection:
 - **State Management**: React Context API
 - **Data Persistence**: SQLite database via Prisma ORM
 - **AI Integration**: OpenAI API with Next.js API routes
+- **Authentication**: JWT-based sessions with bcrypt password hashing
+- **Security**: Cloudflare Turnstile bot protection
+- **Build System**: Next.js with optimized warning suppression for production
 
 ### Category and Tag Organization
 
@@ -103,6 +113,74 @@ The application includes a tag-based filtering system that allows users to quick
 - Reset button to quickly clear all active tag filters
 - Consistent styling between light and dark themes
 
+### Build System & Scripts
+
+The application includes several build configurations optimized for different environments:
+
+#### Available Build Commands
+
+- **`npm run build`** - Production build with warning suppression (recommended)
+  - Disables ESLint plugin during build for faster compilation
+  - Suppresses telemetry collection
+  - Redirects stderr to reduce console noise
+  - Automatically falls back if stderr redirection fails
+
+- **`npm run build:quiet`** - Minimal output build for CI/CD environments
+  - Same optimizations as standard build
+  - Sets CI=true for additional output reduction
+  - Ideal for automated deployment pipelines
+
+- **`npm run build:strict`** - Full warnings and errors (development)
+  - Shows all ESLint warnings and TypeScript errors
+  - Useful for debugging and development
+  - Maintains original Next.js build behavior
+
+- **`npm run lint`** - Run ESLint on the codebase
+- **`npm run lint:errors`** - ESLint with zero tolerance for warnings
+
+#### Build Configuration
+
+The build system is configured to suppress most warnings while maintaining functionality:
+
+**Next.js Configuration (`next.config.js`):**
+```javascript
+{
+  eslint: {
+    ignoreDuringBuilds: true,     // Skip ESLint during builds
+  },
+  typescript: {
+    ignoreBuildErrors: true,      // Ignore TypeScript errors during builds
+  },
+  logging: {
+    fetches: {
+      fullUrl: false,             // Reduce fetch URL logging
+    },
+  }
+}
+```
+
+**Environment Variables for Builds:**
+- `DISABLE_ESLINT_PLUGIN=true` - Completely disables ESLint plugin
+- `NEXT_TELEMETRY_DISABLED=1` - Disables Next.js telemetry collection
+- `CI=true` - Enables CI mode for quieter output
+
+#### Build Output
+
+**Clean Build (npm run build):**
+```
+✓ Compiled successfully
+✓ Generating static pages (19/19)
+[Clean build summary with route sizes]
+```
+
+**Versus Previous Output:**
+```
+⚠ Compiled with warnings
+[Multiple warning messages about dependencies]
+[Dynamic server usage errors for API routes]
+[Configuration warnings]
+```
+
 ### Project Architecture
 
 #### Application Structure
@@ -119,8 +197,14 @@ The application includes a tag-based filtering system that allows users to quick
 │   ├── app/
 │   │   ├── page.jsx            # Main entry point
 │   │   ├── layout.jsx          # Main layout component
+│   │   ├── login/              # Login page with Turnstile integration
+│   │   ├── register/           # Registration page with Turnstile
+│   │   ├── admin/              # Admin dashboard
 │   │   └── api/
-│   │       └── openai/         # API routes for OpenAI
+│   │       ├── auth/           # Authentication API routes
+│   │       ├── admin/          # Admin API routes
+│   │       ├── openai/         # OpenAI API integration
+│   │       └── db/             # Database API routes
 │   ├── components/
 │   │   ├── ui/                 # Base UI components
 │   │   ├── CategoryList.jsx    # Category navigation
@@ -131,13 +215,20 @@ The application includes a tag-based filtering system that allows users to quick
 │   │   ├── VariableModal.jsx   # Variable replacement modal
 │   │   ├── ResponseModal.jsx   # Display OpenAI responses
 │   │   ├── ResponseHistoryModal.jsx # View saved responses
+│   │   ├── TurnstileWidget.jsx # Reusable Turnstile component
+│   │   ├── AccountInfo.jsx     # User account information
 │   │   └── ...
+│   ├── hooks/
+│   │   └── useTurnstile.js     # Custom hook for Turnstile integration
 │   ├── context/
 │   │   ├── PromptContext.jsx   # Core data management
-│   │   └── SettingsContext.jsx # User preferences
+│   │   ├── SettingsContext.jsx # User preferences
+│   │   └── AuthContext.jsx     # Authentication state management
 │   ├── lib/
 │   │   ├── db.js               # Database connection module
 │   │   ├── storage.js          # Database storage adapter
+│   │   ├── auth.js             # Authentication utilities
+│   │   ├── turnstile.js        # Turnstile verification utilities
 │   │   ├── importExportUtil.js # Import/export functionality
 │   │   ├── apiClient.js        # Client-side API wrapper
 │   │   └── ...
@@ -214,6 +305,10 @@ JWT_EXPIRATION="12h"
 COOKIE_NAME="robo_auth"
 COOKIE_SECURE=true
 COOKIE_HTTP_ONLY=true
+
+# Cloudflare Turnstile Settings (Production Only)
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key
+TURNSTILE_SECRET_KEY=your_turnstile_secret_key
 ```
 
 #### API Client
@@ -331,14 +426,18 @@ AI responses are stored with the following structure:
 
 ## Latest Updates
 
-- **Multi-User Authentication**: Added user account system with login/register functionality
-- **User Attribution**: Responses now track and display which user created them
-- **Admin Dashboard**: Added admin interface for user management and database statistics
-- **Tag Filtering**: Added ability to filter prompts by tags, using AND logic for multiple tag selection
-- **Smart Category Organization**: Reorganized the categories panel with prioritized essential categories
+- **Security Enhancements**: Added Cloudflare Turnstile bot protection for registration and login
+- **Code Optimization**: Refactored Turnstile implementation with reusable hooks and components
+- **Build System**: Optimized build process with warning suppression for cleaner production builds
+- **Multi-User Authentication**: Complete user account system with JWT-based sessions
+- **User Attribution**: Responses track and display which user created them
+- **Admin Dashboard**: Interface for user management and database statistics
+- **Reusable Components**: Created `useTurnstile` hook and `TurnstileWidget` component
+- **Tag Filtering**: Filter prompts by tags using AND logic for multiple tag selection
+- **Smart Category Organization**: Reorganized categories with prioritized essential categories
 - **UI Improvements**: Enhanced styling consistency between light and dark themes
-- **OpenAI Integration**: Improved response handling with ability to generate new responses without closing the modal
-- **Database Migration**: Converted from localStorage to SQLite with Prisma ORM for better data management
+- **OpenAI Integration**: Improved response handling with ability to generate new responses
+- **Database Migration**: Converted from localStorage to SQLite with Prisma ORM
 
 ## Development Prerequisites
 
@@ -356,7 +455,23 @@ AI responses are stored with the following structure:
 5. Run the development server with `npm run dev`
 6. Open your browser to `http://localhost:3000`
 7. Log in with the default admin account (email: admin@example.com, password: RoboPrepMe) or register a new account
-8. For production build, use `npm run build` and deploy with `npm start`
+
+#### Production Deployment
+1. **Build the application**: Use `npm run build` for a clean production build
+2. **Start production server**: Use `npm start` to serve the built application
+3. **Alternative builds**:
+   - `npm run build:quiet` - Minimal output for CI/CD
+   - `npm run build:strict` - Full warnings for debugging
+
+#### Turnstile Configuration (Production)
+For production deployments with bot protection:
+1. Get Cloudflare Turnstile keys from your Cloudflare dashboard
+2. Add the keys to your `.env.local` file:
+   ```
+   NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_site_key
+   TURNSTILE_SECRET_KEY=your_secret_key
+   ```
+3. Turnstile automatically activates in production and bypasses in development
 
 ### Database Management
 - View the database schema in `prisma/schema.prisma`
