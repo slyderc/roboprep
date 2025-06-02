@@ -331,6 +331,11 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
               )
             }
             
+            {/* Edit instruction */}
+            <div className="text-left mb-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Click to edit response text</span>
+            </div>
+            
             {/* Response content */}
             <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4 max-h-80 overflow-y-auto">
               {isEditing ? (
@@ -380,7 +385,7 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
               <div className="flex justify-between mt-6">
                 <Button 
                   onClick={handleCancelEdit} 
-                  variant="secondary"
+                  variant="danger"
                   icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -392,7 +397,7 @@ export function ResponseHistoryModal({ isOpen, onClose, promptId, initialIndex =
                 
                 <Button 
                   onClick={handleSaveEdit} 
-                  variant="primary"
+                  variant="success"
                   disabled={!hasEdits}
                   icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

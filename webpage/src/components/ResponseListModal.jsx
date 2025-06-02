@@ -46,7 +46,11 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
           No saved responses found for this prompt.
         </div>
       ) : (
-        <div className="space-y-3 p-2 max-h-[70vh] overflow-y-auto">
+        <>
+          <div className="px-2 pb-1 mb-1">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Click a response to copy or edit</span>
+          </div>
+          <div className="space-y-3 p-2 max-h-[70vh] overflow-y-auto">
           {responses.map((response, index) => (
             <div 
               key={response.id} 
@@ -99,7 +103,8 @@ export function ResponseListModal({ isOpen, onClose, responses, onSelectResponse
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </Modal>
   );

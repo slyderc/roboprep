@@ -218,7 +218,7 @@ export function PromptList({ onSubmitToAi, onViewResponses }) {
       </div>
       
       {promptsWithStatus.length === 0 ? (
-        <div className="text-center text-gray-500 py-8 bg-white rounded-md shadow">
+        <div className="text-center text-gray-500 dark:text-gray-400 py-8 bg-white dark:bg-gray-800 rounded-md shadow dark:shadow-gray-900/20">
           <p className="text-lg mb-4">No prompts found in this category.</p>
           <Button
             variant="primary"

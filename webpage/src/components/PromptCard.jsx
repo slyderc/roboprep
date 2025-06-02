@@ -162,7 +162,7 @@ export function PromptCard({ prompt, onCopy, onEdit, onSubmitToAi, onViewRespons
           <IconButton
             onClick={handleFavoriteClick}
             title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-            className={isFavorite ? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300' : 'hover:text-yellow-500 dark:hover:text-yellow-400'}
+            className={isFavorite ? 'text-yellow-500 hover:text-yellow-600 dark:text-yellow-400 dark:hover:text-yellow-300' : 'hover:text-yellow-500 dark:hover:text-yellow-400'}
             icon={
               <svg 
                 className="w-4 h-4" 

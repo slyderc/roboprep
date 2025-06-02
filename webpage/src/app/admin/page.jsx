@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { SettingsProvider } from '@/context/SettingsContext';
 import { Button } from '@/components/ui/Button';
 import { Input, Label, FormGroup } from '@/components/ui/Input';
 import { showToast } from '@/lib/toastUtil';
 import DbStatsPanel from '@/components/DbStatsPanel';
 
-export default function AdminPage() {
+function AdminDashboard() {
   const { user: currentUser, isAdmin } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState([]);
@@ -542,5 +543,13 @@ export default function AdminPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <SettingsProvider>
+      <AdminDashboard />
+    </SettingsProvider>
   );
 }
